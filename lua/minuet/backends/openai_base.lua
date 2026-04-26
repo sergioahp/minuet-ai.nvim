@@ -196,7 +196,7 @@ function M.complete_openai_fim_base(options, get_text_fn, context, callback)
                 end
 
                 items = common.filter_context_sequences_in_items(items, context)
-                items = utils.remove_spaces(items, true)
+                items = vim.tbl_filter(function(x) return type(x) == 'string' and x:find '%S' end, items)
 
                 callback(items)
             end),

@@ -12,7 +12,7 @@ end
 
 local function prepare_fim_items(items, context)
     local filtered_items = common.filter_context_sequences_in_items(items, context)
-    return utils.remove_spaces(filtered_items, true)
+    return vim.tbl_filter(function(x) return type(x) == 'string' and x:find '%S' end, filtered_items)
 end
 
 function M.complete_openai_base(options, context, callback)

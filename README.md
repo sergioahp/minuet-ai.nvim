@@ -755,6 +755,12 @@ default_config = {
     after_cursor_filter_length = 15,
     -- Similar to after_cursor_filter_length but trim the completion item from
     -- prefix instead of suffix.
+    --
+    -- Setting both `after_cursor_filter_length` and
+    -- `before_cursor_filter_length` to 0 disables all text modification on
+    -- completion candidates, including the surrounding whitespace stripping.
+    -- This is useful for FIM models, which emit intentional leading and
+    -- trailing whitespace that should not be touched.
     before_cursor_filter_length = 2,
     -- proxy port to use
     proxy = nil,

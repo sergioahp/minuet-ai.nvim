@@ -270,6 +270,23 @@ local M = {
         -- the (x/y) counter and next/prev only ever offer visibly different
         -- alternatives. nil/false renders everything (default).
         max_display_lines = nil,
+        -- Whether asking for this family while ANOTHER family's ghost text is on
+        -- screen continues that text instead of replacing it. The request is
+        -- fired with the visible completion appended to the prompt prefix and
+        -- its result is stitched back onto it, so the ghost text only ever grows
+        -- -- the escalation reads as "reveal more" rather than a different
+        -- suggestion. The reveal starts from the local cache: the tail a display
+        -- cap was hiding shows immediately, and when a continuation generated
+        -- earlier is already cached no request is fired at all. Meant for a
+        -- manual keymap that escalates the cheap autotrigger family into a
+        -- bigger one, e.g.
+        --   action.next(vim.tbl_deep_extend('force', block_opts, {
+        --     virtualtext = { max_display_lines = false, extend_visible = true },
+        --   }))
+        -- Leave it off (default) for the family the plain next/prev keymap asks
+        -- for, which is meant to cycle to a *different* completion; pressing that
+        -- keymap while the escalated family is showing switches back to it.
+        extend_visible = false,
         -- Maximum number of response pool entries kept per buffer. The pool is
         -- the local cache of past completions; a larger pool lets us recognise
         -- more previously-seen buffer states (so a returning cursor re-shows a

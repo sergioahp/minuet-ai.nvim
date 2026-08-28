@@ -2512,4 +2512,328 @@ return {
             helpers.delete_buffer(bufnr)
         end,
     },
+    {
+        -- Accepting part of a manual multi-line completion must not hand the
+        -- display back to the auto-trigger family: its top-up would repaint the
+        -- remainder with its own results, under its own display cap, dropping or
+        -- reshaping the block the user was walking through.
+        name = 'virtualtext accepting part of a manual family tops up in that family',
+        run = function()
+            helpers.setup_root_config {
+                provider = 'test',
+                debounce = 0,
+                throttle = 0,
+                n_completions = 1,
+                virtualtext = {
+                    debounce = 0,
+                    throttle = 0,
+                    max_retries = 0,
+                    max_display_lines = 1,
+                    -- any accept-slide leaves the soft band, so the accept below
+                    -- always schedules a top-up
+                    cache_soft_chars_ahead = 0,
+                },
+                provider_options = {
+                    test = { model = 'fixture-model', optional = {} },
+                },
+            }
+
+            local calls = {}
+            local pending_callback
+            package.loaded['minuet.backends.test'] = {
+                complete = function(context, callback, cfg)
+                    table.insert(calls, {
+                        lines_before = context.lines_before,
+                        stop = (cfg.provider_options.test.optional or {}).stop,
+                    })
+                    if #calls == 1 then
+                        callback({ 'aaa\nbbb\nccc' }, true)
+                    else
+                        pending_callback = callback
+                    end
+                end,
+            }
+
+            local virtualtext = helpers.reload 'minuet.virtualtext'
+            virtualtext.setup()
+
+            local original_ve = vim.o.virtualedit
+            vim.o.virtualedit = 'onemore'
+            local bufnr = helpers.create_buffer({ 'x = ' }, { 1, 4 })
+            vim.b.minuet_virtual_text_auto_trigger_mode = 'full'
+            local original_mode = vim.fn.mode
+            vim.fn.mode = function()
+                return 'i'
+            end
+
+            local block = {
+                provider_options = { test = { optional = { stop = '\n\n' } } },
+                virtualtext = { max_display_lines = false },
+            }
+
+            virtualtext.action.fire(block)
+            helpers.expect_equal(
+                get_suggestion_text(bufnr, virtualtext.ns_id),
+                'aaa\nbbb\nccc',
+                'the manual family renders the whole block'
+            )
+
+            virtualtext.action.accept_line()
+            helpers.expect_equal(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), { 'x = aaa' })
+            helpers.expect_equal(
+                get_suggestion_text(bufnr, virtualtext.ns_id),
+                '\nbbb\nccc',
+                'the rest of the block stays whole -- no display cap from the default family'
+            )
+            helpers.expect_equal(#calls, 2, 'leaving the soft band schedules a top-up')
+            helpers.expect_equal(calls[2].stop, '\n\n', 'the top-up stays in the family being walked')
+
+            -- The top-up lands: still the walked remainder, still uncapped.
+            -- The top-up joins the cyclable list (hence the counter) but must not
+            -- repaint over the walked remainder.
+            pending_callback({ 'zzz' }, true)
+            helpers.expect_match(get_suggestion_text(bufnr, virtualtext.ns_id), '^\nbbb\nccc')
+
+            virtualtext.action.dismiss()
+            vim.fn.mode = original_mode
+            vim.o.virtualedit = original_ve
+            helpers.delete_buffer(bufnr)
+        end,
+    },
+    {
+        -- extend_visible: asking for a bigger family while a completion is on
+        -- screen continues it instead of replacing it. The hidden tail the
+        -- display cap was holding back is revealed from cache straight away, the
+        -- request carries the revealed text in its prompt prefix, and its result
+        -- is stitched back on -- so nothing visible ever changes, it only grows.
+        name = 'virtualtext extend_visible reveals the cached tail and continues past it',
+        run = function()
+            helpers.setup_root_config {
+                provider = 'test',
+                debounce = 0,
+                throttle = 0,
+                n_completions = 1,
+                virtualtext = {
+                    debounce = 0,
+                    throttle = 0,
+                    max_retries = 0,
+                    max_display_lines = 1,
+                },
+                provider_options = {
+                    test = { model = 'fixture-model', optional = {} },
+                },
+            }
+
+            local calls = {}
+            local pending_callback
+            package.loaded['minuet.backends.test'] = {
+                complete = function(context, callback, cfg)
+                    table.insert(calls, {
+                        lines_before = context.lines_before,
+                        stop = (cfg.provider_options.test.optional or {}).stop,
+                    })
+                    if #calls == 1 then
+                        callback({ 'aaa\nbbb' }, true)
+                    else
+                        pending_callback = callback
+                    end
+                end,
+            }
+
+            local virtualtext = helpers.reload 'minuet.virtualtext'
+            virtualtext.setup()
+
+            local original_ve = vim.o.virtualedit
+            vim.o.virtualedit = 'onemore'
+            local bufnr = helpers.create_buffer({ 'x = ' }, { 1, 4 })
+            local original_mode = vim.fn.mode
+            vim.fn.mode = function()
+                return 'i'
+            end
+
+            local block = {
+                provider_options = { test = { optional = { stop = '\n\n' } } },
+                virtualtext = { max_display_lines = false, extend_visible = true },
+            }
+
+            virtualtext.action.fire()
+            helpers.expect_equal(get_suggestion_text(bufnr, virtualtext.ns_id), 'aaa', 'the cap shows one line')
+
+            virtualtext.action.next(block)
+            helpers.expect_equal(
+                get_suggestion_text(bufnr, virtualtext.ns_id),
+                'aaa\nbbb',
+                'the tail the cap was hiding is revealed from cache, uncapped'
+            )
+            helpers.expect_equal(#calls, 2)
+            helpers.expect_equal(
+                calls[2].lines_before,
+                'x = aaa\nbbb',
+                'the request continues past the revealed text'
+            )
+            helpers.expect_equal(calls[2].stop, '\n\n')
+
+            pending_callback({ '\nccc' }, true)
+            helpers.expect_equal(
+                get_suggestion_text(bufnr, virtualtext.ns_id),
+                'aaa\nbbb\nccc',
+                'the continuation is stitched back onto the revealed text'
+            )
+
+            -- Back to the plain keymap: it asks for the default family, so it
+            -- switches back to the line completion rather than cycling inside
+            -- the block. Its cache is still fresh here, so no request fires.
+            virtualtext.action.next()
+            helpers.expect_equal(get_suggestion_text(bufnr, virtualtext.ns_id), 'aaa')
+            helpers.expect_equal(#calls, 2, 'the line family is still cached at this state')
+
+            -- Extending again finds the continuation generated a moment ago
+            -- already cached: the reveal costs no request at all.
+            virtualtext.action.next(block)
+            helpers.expect_equal(get_suggestion_text(bufnr, virtualtext.ns_id), 'aaa\nbbb\nccc')
+            helpers.expect_equal(#calls, 2, 'a cached continuation is served without a request')
+
+            virtualtext.action.dismiss()
+            vim.fn.mode = original_mode
+            vim.o.virtualedit = original_ve
+            helpers.delete_buffer(bufnr)
+        end,
+    },
+    {
+        -- The escalated family bounds its blocks with a stop token. When the
+        -- ghost text already runs past that token it is a whole block by that
+        -- family's own definition, so the press is purely a reveal: the cached
+        -- text is shown in full and no request goes out for a continuation the
+        -- family could never display.
+        name = 'virtualtext extend_visible reveals without a request past the target stop token',
+        run = function()
+            helpers.setup_root_config {
+                provider = 'test',
+                debounce = 0,
+                throttle = 0,
+                n_completions = 1,
+                virtualtext = {
+                    debounce = 0,
+                    throttle = 0,
+                    max_retries = 0,
+                    max_display_lines = 1,
+                },
+                provider_options = {
+                    test = { model = 'fixture-model', optional = {} },
+                },
+            }
+
+            local calls = 0
+            package.loaded['minuet.backends.test'] = {
+                complete = function(_, callback)
+                    calls = calls + 1
+                    callback({ 'aaa\n\nbbb' }, true)
+                end,
+            }
+
+            local virtualtext = helpers.reload 'minuet.virtualtext'
+            virtualtext.setup()
+
+            local original_ve = vim.o.virtualedit
+            vim.o.virtualedit = 'onemore'
+            local bufnr = helpers.create_buffer({ 'x = ' }, { 1, 4 })
+            local original_mode = vim.fn.mode
+            vim.fn.mode = function()
+                return 'i'
+            end
+
+            virtualtext.action.fire()
+            helpers.expect_equal(get_suggestion_text(bufnr, virtualtext.ns_id), 'aaa')
+
+            virtualtext.action.next {
+                provider_options = { test = { optional = { stop = '\n\n' } } },
+                virtualtext = { max_display_lines = false, extend_visible = true },
+            }
+            helpers.expect_equal(
+                get_suggestion_text(bufnr, virtualtext.ns_id),
+                'aaa\n\nbbb',
+                'the cached completion is revealed whole'
+            )
+            helpers.expect_equal(calls, 1, 'a completion already past the stop token needs no continuation')
+
+            virtualtext.action.dismiss()
+            vim.fn.mode = original_mode
+            vim.o.virtualedit = original_ve
+            helpers.delete_buffer(bufnr)
+        end,
+    },
+    {
+        -- Once the escalated family is the one showing, its own keymap goes back
+        -- to meaning "cycle": the user asked for a different block, not for more
+        -- of this one, so the request starts at the cursor again.
+        name = 'virtualtext extend_visible cycles instead of extending within its own family',
+        run = function()
+            helpers.setup_root_config {
+                provider = 'test',
+                debounce = 0,
+                throttle = 0,
+                n_completions = 1,
+                virtualtext = {
+                    debounce = 0,
+                    throttle = 0,
+                    max_retries = 0,
+                    max_display_lines = 1,
+                },
+                provider_options = {
+                    test = { model = 'fixture-model', optional = {} },
+                },
+            }
+
+            local calls = {}
+            package.loaded['minuet.backends.test'] = {
+                complete = function(context, callback)
+                    table.insert(calls, { lines_before = context.lines_before })
+                    if #calls == 1 then
+                        callback({ 'aaa' }, true)
+                    elseif #calls == 2 then
+                        callback({ '-more' }, true)
+                    else
+                        callback({ 'zzz' }, true)
+                    end
+                end,
+            }
+
+            local virtualtext = helpers.reload 'minuet.virtualtext'
+            virtualtext.setup()
+
+            local original_ve = vim.o.virtualedit
+            vim.o.virtualedit = 'onemore'
+            local bufnr = helpers.create_buffer({ 'x = ' }, { 1, 4 })
+            local original_mode = vim.fn.mode
+            vim.fn.mode = function()
+                return 'i'
+            end
+
+            local block = {
+                provider_options = { test = { optional = { stop = '\n\n' } } },
+                virtualtext = { max_display_lines = false, extend_visible = true },
+            }
+
+            virtualtext.action.fire()
+            virtualtext.action.next(block)
+            helpers.expect_equal(calls[2].lines_before, 'x = aaa', 'the escalation continues the shown line')
+            helpers.expect_equal(get_suggestion_text(bufnr, virtualtext.ns_id), 'aaa-more')
+
+            -- Same family now: this press means "another block", so the request
+            -- goes back to starting at the cursor and the display cycles onto it.
+            virtualtext.action.next(block)
+            helpers.expect_equal(#calls, 3)
+            helpers.expect_equal(
+                calls[3].lines_before,
+                'x = ',
+                'cycling requests from the cursor, not past the ghost text'
+            )
+            helpers.expect_match(get_suggestion_text(bufnr, virtualtext.ns_id), '^zzz')
+
+            virtualtext.action.dismiss()
+            vim.fn.mode = original_mode
+            vim.o.virtualedit = original_ve
+            helpers.delete_buffer(bufnr)
+        end,
+    },
 }

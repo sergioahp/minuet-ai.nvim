@@ -392,6 +392,35 @@ local function pool_suggestions(ctx, params, cur_before, cur_after, cur_incomple
     return results, n_fresh
 end
 
+--- The cache slot for one (params, prefix, suffix) triple, created empty when
+--- this state has none yet. FIM backends fire their callback once per parallel
+--- request with the growing accumulated list, so results merge into the slot
+--- rather than replacing it.
+---@param ctx minuet.VirtualtextSuggestionContext
+---@param params table
+---@param lines_before string
+---@param lines_after string
+---@return minuet.CacheEntry
+local function cache_entry(ctx, params, lines_before, lines_after)
+    ctx.cache = ctx.cache or {}
+    for _, entry in ipairs(ctx.cache) do
+        if vim.deep_equal(entry.params, params)
+            and entry.lines_before == lines_before
+            and entry.lines_after == lines_after
+        then
+            return entry
+        end
+    end
+    local entry = {
+        lines_before = lines_before,
+        lines_after = lines_after,
+        params = params,
+        completions = {},
+    }
+    table.insert(ctx.cache, entry)
+    return entry
+end
+
 local MAX_LOCKS = 8
 
 --- The lock associated with the current buffer state, if any, plus its untyped
@@ -529,6 +558,7 @@ end
 ---@field shown_choices? table<string, true>
 ---@field cache? minuet.CacheEntry[]
 ---@field last_trigger_params? table
+---@field last_trigger_overrides? table config patch of the trigger that established the active family
 ---@field last_trigger_was_manual? boolean
 ---@field anchors? { params: table, lines_before: string, lines_after: string, is_incomplete_before?: boolean }[]
 ---@field n_retries? integer
@@ -546,6 +576,7 @@ end
 ---@field distinct_silent? boolean the in-flight distinct fetch is a preemptive tail prefetch (no dots, no cycle)
 ---@field distinct_seen? table<string, true> visible keys of the completions already seen when the distinct fetch started
 ---@field distinct_attempts? integer requests fired so far for the current distinct fetch
+---@field extend_active? string ghost text an in-flight request is continuing past (see the extend path in trigger)
 ---@field skip_cursor_moved_after_accept? { row: integer, col: integer, changedtick: integer } cursor event caused by accept
 
 -- Provider callbacks capture this token; a *hard* cleanup bumps it so in-flight
@@ -580,6 +611,7 @@ local function reset_ctx(ctx)
     ctx.distinct_silent = nil
     ctx.distinct_seen = nil
     ctx.distinct_attempts = nil
+    ctx.extend_active = nil
 end
 
 local function stop_timer()
@@ -808,6 +840,30 @@ local function resolve_context(cmp_context, cfg, ctx, params)
     return context
 end
 
+--- The part of `text` still ahead of the live cursor, or nil when `text` no
+--- longer applies there. Applies the same content-compatibility rules as the
+--- cache pool (suffix agreement, typed-since head match) to a single completion,
+--- which is what lets a streamed partial be painted while the user keeps typing.
+---@param cfg table effective config
+---@param req_before string before-cursor text the completion was requested at
+---@param req_after string after-cursor text the completion was requested at
+---@param text string
+---@return string?
+local function live_remainder(cfg, req_before, req_after, text)
+    local ctx_now = vt_get_context(utils.make_cmp_context(), cfg)
+    if not suffix_compatible(req_after, ctx_now.lines_after) then
+        return nil
+    end
+    local typed_since = prefix_typed_since(req_before, ctx_now.lines_before, ctx_now.opts.is_incomplete_before)
+    if typed_since == nil or typed_since >= #text then
+        return nil
+    end
+    if text:sub(1, typed_since) ~= ctx_now.lines_before:sub(#ctx_now.lines_before - typed_since + 1) then
+        return nil
+    end
+    return text:sub(typed_since + 1)
+end
+
 ---@param bufnr integer
 ---@param overrides? table Optional partial config patch, deep-merged onto the
 ---live config for this single request (no global mutation). Use to fire with a
@@ -817,7 +873,12 @@ end
 ---@param is_manual? boolean When true the request was user-initiated (not the
 ---auto-trigger debounce path). Manual completions remain visible while typing
 ---even when auto-trigger is off.
-local function trigger(bufnr, overrides, is_retry, is_manual)
+---@param extend? string Ghost text to continue rather than replace: the prompt
+---prefix gets it appended and the results are stitched back onto it, so this
+---family's completions still start at the real cursor. Used when a manual
+---keymap escalates the completion the user is already looking at (see
+---`virtualtext.extend_visible`).
+local function trigger(bufnr, overrides, is_retry, is_manual, extend)
     if bufnr ~= api.nvim_get_current_buf() or vim.fn.mode() ~= 'i' then
         return
     end
@@ -846,6 +907,9 @@ local function trigger(bufnr, overrides, is_retry, is_manual)
         -- single display slot and the ghost text flickers between them.
         if ctx.last_trigger_params ~= nil and not vim.deep_equal(params, ctx.last_trigger_params) then
             bump_request_generation(ctx)
+            -- The bump silences a pending extension's callback, so it can no
+            -- longer clear this itself.
+            ctx.extend_active = nil
         end
     end
 
@@ -870,8 +934,14 @@ local function trigger(bufnr, overrides, is_retry, is_manual)
     local cur_before = context.lines_before
     local cur_after = context.lines_after
 
-    -- Remember which params were active so on_cursor_moved_i can match them.
+    -- Remember which params were active so on_cursor_moved_i can match them, and
+    -- the patch that produced them so every top-up fired on behalf of what is on
+    -- screen stays in the same family. Without the patch a top-up would re-fire
+    -- as the default (auto-trigger) family and repaint the display with its
+    -- results under its display cap -- pulling the rug from under a manual
+    -- multi-line completion the user is in the middle of accepting.
     ctx.last_trigger_params = params
+    ctx.last_trigger_overrides = overrides
 
     -- Display-side line cap traveling with this trigger family, resolved from
     -- the effective (post-override) config so a manual multi-line keymap can
@@ -894,6 +964,50 @@ local function trigger(bufnr, overrides, is_retry, is_manual)
     local n_completions = cfg.n_completions or 3
     local max_retries = (cfg.virtualtext or {}).max_retries or 6
     local soft_limit = (cfg.virtualtext or {}).cache_soft_chars_ahead or 20
+    local hard_limit = (cfg.virtualtext or {}).cache_max_chars_ahead or 40
+
+    -- Extend: this family continues the ghost text the user is looking at
+    -- instead of replacing it. Pin the longest completion cached here that
+    -- continues that text, seeding the text itself as a completion of this
+    -- family when nothing does yet -- it starts at the real cursor like any
+    -- other, so it pools, locks and slides normally. The pin is what the paint
+    -- below renders: with the cap lifted it is already a reveal (the tail the
+    -- cap was hiding), and it holds the display steady, never shrinking, while
+    -- the continuation is generated.
+    local extend_satisfied = false
+    if extend then
+        local pooled = pool_suggestions(
+            ctx,
+            params,
+            cur_before,
+            cur_after,
+            context.opts.is_incomplete_before,
+            soft_limit,
+            hard_limit
+        )
+        local best = extend
+        for _, comp in ipairs(pooled) do
+            if #comp > #best and comp:sub(1, #extend) == extend then
+                best = comp
+            end
+        end
+        -- Two ways the request is not worth firing: a continuation generated
+        -- earlier is already cached here, or the ghost text runs past this
+        -- family's stop token -- by this family's own definition it is already a
+        -- whole block, and the pool would cut any continuation off at that stop
+        -- anyway, so the request could not produce anything displayable.
+        extend_satisfied = best ~= extend or truncate_at_stop_tokens(extend, params.stop_tokens) ~= extend
+        if not extend_satisfied then
+            -- Nothing cached continues it yet, so the ghost text itself is what
+            -- has to hold the display while the continuation is generated.
+            local entry = cache_entry(ctx, params, cur_before, cur_after)
+            if not vim.tbl_contains(entry.completions, extend) then
+                table.insert(entry.completions, extend)
+            end
+        end
+        set_lock(ctx, params, best, cur_before, cur_after, context.opts.is_incomplete_before)
+    end
+
     local cached, choice, n_fresh =
         derive_suggestions(ctx, params, cur_before, cur_after, context.opts.is_incomplete_before, cfg)
     -- During a cycle-past-the-last distinct fetch we keep the user's current
@@ -906,6 +1020,16 @@ local function trigger(bufnr, overrides, is_retry, is_manual)
         update_preview(ctx)
     end
 
+    if extend then
+        -- Nothing left to generate: the reveal above is the whole answer, served
+        -- from the local cache without a request.
+        if extend_satisfied then
+            ctx.extend_active = nil
+            return
+        end
+        ctx.extend_active = extend
+    end
+
     -- Per-state top-up budget. The goal is n_completions *fresh* completions
     -- (those with near-full context) for the current buffer state. We start a
     -- fresh budget only when the cursor has moved to a genuinely new state -- the
@@ -913,9 +1037,10 @@ local function trigger(bufnr, overrides, is_retry, is_manual)
     -- within one state shares a single budget. Within a state, once a non-retry
     -- request has fired and the retry budget is spent we "move on" rather than
     -- re-hammering a position that refuses to yield distinct fresh completions.
-    -- A distinct fetch deliberately bypasses both gates: it must keep firing past
-    -- a full bucket to surface a not-yet-seen completion.
-    if not is_retry and not ctx.distinct_active then
+    -- A distinct fetch and an extend deliberately bypass both gates: the bucket
+    -- may well be full of completions that are not what the user just asked for
+    -- (a not-yet-seen one; a continuation of what is on screen).
+    if not is_retry and not ctx.distinct_active and not extend then
         local drift = ctx.fetch_state_before ~= nil
             and vim.deep_equal(ctx.fetch_params, params)
             and prefix_typed_since(ctx.fetch_state_before, cur_before, context.opts.is_incomplete_before)
@@ -975,6 +1100,16 @@ local function trigger(bufnr, overrides, is_retry, is_manual)
         print(string.format('[minuet] prefix pin slides: %d (this: %s)', prefix_slide_count, disp))
     end
 
+    -- The extend request is asked to continue past the ghost text, so the prompt
+    -- prefix gets it appended -- after the anchor bookkeeping above, which tracks
+    -- buffer content only. It is a pure append at the prefix tail, so the warm
+    -- prefix the anchor pinned stays warm; the cache slot and the anchor keep
+    -- using the real before-cursor text, and the results are stitched back onto
+    -- `extend` in the callback.
+    if extend then
+        context.lines_before = cur_before .. extend
+    end
+
     local provider = require('minuet.backends.' .. cfg.provider)
 
     -- Capture (do not bump) the current generation: concurrent in-flight
@@ -1006,23 +1141,34 @@ local function trigger(bufnr, overrides, is_retry, is_manual)
                 return
             end
             text = truncate_at_stop_tokens(text, params.stop_tokens)
-            -- The user may have typed while the stream is in flight; apply the
-            -- same content-compatibility rules as the cache pool, on one item.
-            local ctx_now = vt_get_context(utils.make_cmp_context(), cfg)
-            if not suffix_compatible(cur_after, ctx_now.lines_after) then
-                return
-            end
-            local typed_since = prefix_typed_since(cur_before, ctx_now.lines_before, ctx_now.opts.is_incomplete_before)
-            if typed_since == nil or typed_since >= #text then
-                return
-            end
-            if text:sub(1, typed_since) ~= ctx_now.lines_before:sub(#ctx_now.lines_before - typed_since + 1) then
-                return
-            end
-            local remainder = text:sub(typed_since + 1)
+            -- The user may have typed while the stream is in flight.
+            local remainder = live_remainder(cfg, cur_before, cur_after, text)
             -- Paint only once the visible portion is final, i.e. the stream has
             -- produced at least one display line beyond the cut.
-            if not display_cut(vim.split(remainder, '\n', { plain = true }), display_max_lines) then
+            if not remainder or not display_cut(vim.split(remainder, '\n', { plain = true }), display_max_lines) then
+                return
+            end
+            ctx.suggestions = { remainder }
+            ctx.choice = 1
+            ctx.shown_choices = ctx.shown_choices or {}
+            update_preview(ctx)
+        end
+    elseif extend then
+        -- An extension only ever appends to the ghost text already on screen, so
+        -- its partials are safe to paint the moment they arrive: each repaint is
+        -- a strict superset of the last, which is the reveal growing rather than
+        -- anything visible changing. The cyclable siblings come back when the
+        -- request settles and the callback re-derives the pool.
+        context.opts.on_stream_partial = function(text)
+            if api.nvim_get_current_buf() ~= bufnr or ctx.request_generation ~= request_generation then
+                return
+            end
+            if ctx.extend_active ~= extend then
+                return
+            end
+            text = truncate_at_stop_tokens(text, params.stop_tokens)
+            local remainder = live_remainder(cfg, cur_before, cur_after, extend .. text)
+            if not remainder then
                 return
             end
             ctx.suggestions = { remainder }
@@ -1039,29 +1185,23 @@ local function trigger(bufnr, overrides, is_retry, is_manual)
 
         data = utils.list_dedup(data or {})
 
-        -- Locate or create the cache entry for this (context, params) triple.
-        -- FIM backends fire the callback once per parallel request with the
-        -- growing accumulated list, so we merge rather than replace.
-        local cache = ctx.cache
-        local entry
-        for _, e in ipairs(cache) do
-            if vim.deep_equal(e.params, params)
-                and e.lines_before == cur_before
-                and e.lines_after == cur_after
-            then
-                entry = e
-                break
+        -- An extend request generated the text *past* the ghost text, so stitch
+        -- it back on: every completion in a cache slot starts at that slot's
+        -- cursor, and this one is keyed at the real cursor like any other. An
+        -- empty continuation stitches back to the seed, which carries no new
+        -- text, so drop it here and let `next(data)` read as "nothing came back".
+        if extend then
+            local stitched = {}
+            for _, c in ipairs(data) do
+                if #c > 0 then
+                    table.insert(stitched, extend .. c)
+                end
             end
+            data = stitched
         end
-        if not entry then
-            entry = {
-                lines_before = cur_before,
-                lines_after = cur_after,
-                params = params,
-                completions = {},
-            }
-            table.insert(cache, entry)
-        end
+
+        local entry = cache_entry(ctx, params, cur_before, cur_after)
+        local cache = ctx.cache
 
         -- Merge new completions into the entry (deduplicated)
         local existing = {}
@@ -1070,6 +1210,18 @@ local function trigger(bufnr, overrides, is_retry, is_manual)
             if not existing[c] then
                 existing[c] = true
                 table.insert(entry.completions, c)
+            end
+        end
+
+        -- The seed the extend pinned was a placeholder for the text being
+        -- generated. Once a real continuation of it lands it is a strict prefix
+        -- of that one: nothing to cycle to, and it would pin the display short
+        -- of the reveal it stood in for.
+        if extend and #data > 0 then
+            for i = #entry.completions, 1, -1 do
+                if entry.completions[i] == extend then
+                    table.remove(entry.completions, i)
+                end
             end
         end
 
@@ -1098,6 +1250,60 @@ local function trigger(bufnr, overrides, is_retry, is_manual)
             ctx_now.opts.is_incomplete_before,
             cfg
         )
+
+        -- Extend: hold the revealed ghost text until its continuation lands, then
+        -- grow into it. The picked completion starts with what is on screen, so
+        -- the repaint only appends.
+        if ctx.extend_active then
+            if extend ~= ctx.extend_active then
+                -- A result from another request of this family: cached above,
+                -- but it must not repaint over the text being continued.
+                return
+            end
+            local picked
+            for i, comp in ipairs(effective) do
+                if #comp > #extend and comp:sub(1, #extend) == extend then
+                    picked = i
+                    break
+                end
+            end
+            if picked then
+                ctx.extend_active = nil
+                set_lock(
+                    ctx,
+                    params,
+                    effective[picked],
+                    ctx_now.lines_before,
+                    ctx_now.lines_after,
+                    ctx_now.opts.is_incomplete_before
+                )
+                -- Re-derive against the new lock: the seed it replaces is gone
+                -- from the pool, so the list above still carries it as a pinned
+                -- leftover -- a cyclable entry that is a strict prefix of what
+                -- is now on screen.
+                local grown, grown_choice = derive_suggestions(
+                    ctx,
+                    params,
+                    ctx_now.lines_before,
+                    ctx_now.lines_after,
+                    ctx_now.opts.is_incomplete_before,
+                    cfg
+                )
+                ctx.suggestions = grown
+                ctx.choice = grown_choice
+                ctx.shown_choices = ctx.shown_choices or {}
+                update_preview(ctx)
+            elseif done ~= false then
+                -- Nothing continues the ghost text: either the model had nothing
+                -- to add past it -- an empty continuation is a real answer here,
+                -- unlike a repeated completion in a distinct fetch, so there is
+                -- nothing to retry for -- or the cursor moved on. Either way the
+                -- revealed text stays exactly as it is.
+                ctx.extend_active = nil
+                update_preview(ctx)
+            end
+            return
+        end
 
         -- Distinct fetch (loud cycle-past-the-last, or a silent tail prefetch):
         -- keep the current view until a completion the user has not already seen
@@ -1247,7 +1453,11 @@ local function advance(count, ctx, overrides)
     end
 end
 
-local function schedule()
+--- Fire an auto-trigger request through the debounce/throttle/predicate gates.
+---@param overrides? table Config patch for the request. Top-ups fired on behalf
+---of what is on screen pass `ctx.last_trigger_overrides` so they stay in the
+---displayed family instead of reverting to the default one.
+local function schedule(overrides)
     if internal.is_on_throttle then
         return
     end
@@ -1279,7 +1489,7 @@ local function schedule()
             end, config.throttle)
         end
 
-        trigger(bufnr)
+        trigger(bufnr, overrides)
     end
 
     if (config.debounce or 0) <= 0 then
@@ -1303,11 +1513,14 @@ end
 ---@param overrides? table Optional config patch.
 ---Behavior:
 ---  * no suggestions yet → fire a trigger with overrides applied
----  * suggestions visible and overrides resolve to a DIFFERENT param-set
----    than the one that produced them (e.g. user is showing autotrigger
----    results with stop=\n and presses a keymap that overrides stop=\n\n)
----    → fire a fresh trigger so the user actually gets the variant they
----    asked for, rather than cycling within the wrong set
+---  * suggestions visible but this press asks for a DIFFERENT param-set than
+---    the one that produced them (e.g. autotrigger results with stop=\n are
+---    showing and the user presses a keymap that overrides stop=\n\n -- or the
+---    plain keymap while a manual family is showing) → fire a fresh trigger so
+---    the user gets the family they asked for instead of cycling inside the
+---    other one. With `virtualtext.extend_visible` set for the family being
+---    asked for, that trigger continues the visible ghost text rather than
+---    replacing it.
 ---  * cycling forward off the end of the list → fetch a new, distinct completion
 ---    (loading dots) instead of wrapping back to the first
 ---  * otherwise → cycle within the visible set
@@ -1319,13 +1532,18 @@ local function cycle_or_fetch(direction, overrides)
         return
     end
 
+    -- Resolve the family this press asks for with or without overrides: the
+    -- plain keymap asks for the default family just as explicitly as an
+    -- overriding one asks for its own, so it must switch back when another
+    -- family is on screen rather than cycling within it.
+    local cfg = require('minuet').config
     if overrides then
-        local cfg = vim.tbl_deep_extend('force', require('minuet').config, overrides)
-        local new_params = extract_cache_params(cfg)
-        if not vim.deep_equal(new_params, ctx.last_trigger_params) then
-            trigger(api.nvim_get_current_buf(), overrides, false, true)
-            return
-        end
+        cfg = vim.tbl_deep_extend('force', cfg, overrides)
+    end
+    if not vim.deep_equal(extract_cache_params(cfg), ctx.last_trigger_params) then
+        local shown = (cfg.virtualtext or {}).extend_visible and get_current_suggestion(ctx) or nil
+        trigger(api.nvim_get_current_buf(), overrides, false, true, shown ~= '' and shown or nil)
+        return
     end
 
     if direction > 0 and ctx.choice and ctx.choice >= #ctx.suggestions then
@@ -1457,6 +1675,12 @@ local function accept_n_chars(n_chars)
         -- Do not terminate in-flight jobs here. Let them populate ctx.cache, but
         -- prevent their callbacks from repainting the sliced partial-accept view.
         bump_request_generation(ctx)
+        -- Those callbacks are also the ones that would clear these, so an accept
+        -- has to: a pending fetch left marked active would keep its loading dots
+        -- painted and hold off the next paint for good.
+        ctx.distinct_active = nil
+        ctx.distinct_silent = nil
+        ctx.extend_active = nil
         clear_preview()
         api.nvim_buf_set_text(0, line, col, line, col, lines)
         local new_col = #lines[#lines]
@@ -1478,8 +1702,12 @@ local function accept_n_chars(n_chars)
             -- band, where fuller-context completions are worth fetching before
             -- the user consumes the rest. trigger() applies the per-state
             -- budget, so this is a no-op while the state is still satisfied.
+            -- Stay in the family being walked: a top-up fired as the default one
+            -- would repaint the remainder with its results, under its display
+            -- cap -- the rug pull that made accepting part of a manual
+            -- multi-line completion drop or reshape the rest of it.
             if should_auto_trigger() then
-                schedule()
+                schedule(ctx.last_trigger_overrides)
             end
         else
             -- Fully consuming a suggestion frees its lock (derive_suggestions
@@ -1509,9 +1737,10 @@ local function accept_n_chars(n_chars)
                     update_preview(ctx)
                 end
                 -- Same top-up rule as on_cursor_moved_i: short of fresh
-                -- completions at the new state, kick a background fetch.
+                -- completions at the new state, kick a background fetch -- in
+                -- the family whose cache was just re-derived.
                 if n_fresh < (cfg.n_completions or 3) and should_auto_trigger() then
-                    schedule()
+                    schedule(ctx.last_trigger_overrides)
                 end
             end
         end
@@ -1787,10 +2016,11 @@ function autocmd.on_cursor_moved_i()
         end
     end
 
-    -- Moving the cursor abandons any in-flight cycle-past-the-last fetch: the
-    -- state it was fetching for is no longer current, so drop the dots and let
-    -- the normal re-derive below take over.
+    -- Moving the cursor abandons any in-flight cycle-past-the-last fetch or
+    -- pending extension: the state each was fetching for is no longer current,
+    -- so drop the dots and let the normal re-derive below take over.
     ctx.distinct_active = nil
+    ctx.extend_active = nil
 
     -- Only serve cached completions when auto-trigger is on, or when the user
     -- explicitly fired a manual completion that is still "live" (not yet
@@ -1819,11 +2049,12 @@ function autocmd.on_cursor_moved_i()
             ctx.shown_choices = ctx.shown_choices or {}
             update_preview(ctx)
             -- Soft invalidation: keep the cached suggestions on screen but, if we
-            -- are short of n_completions fresh ones, kick a background top-up.
+            -- are short of n_completions fresh ones, kick a background top-up in
+            -- the family that is showing (the same one we just derived from).
             -- trigger() applies the per-state budget, so this stops re-firing
             -- once the state has been exhausted ("move on").
             if n_fresh < (cfg.n_completions or 3) and should_auto_trigger() then
-                schedule()
+                schedule(ctx.last_trigger_overrides)
             else
                 stop_timer()
             end

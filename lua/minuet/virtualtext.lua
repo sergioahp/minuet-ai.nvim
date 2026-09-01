@@ -578,7 +578,7 @@ end
 ---@field cur_after? string after-cursor text of the most recent derive
 ---@field cur_incomplete_before? boolean whether cur_before was left-truncated
 ---@field display_max_lines? integer render at most this many content lines of the active suggestion (nil = all)
----@field rendered_key? string visible completion content currently painted, excluding the cycle annotation
+---@field rendered_state? { changedtick: integer, row: integer, col: integer } buffer state of the current extmark
 ---@field fetch_state_before? string before-cursor text where the current top-up budget started
 ---@field fetch_params? table params of the current top-up budget's state
 ---@field fetched_this_state? boolean whether a non-retry request already fired at the current top-up state
@@ -596,8 +596,9 @@ end
 -- in-flight callbacks stop painting and retrying once the user asks for a
 -- different variant -- otherwise the two families fight over the one display
 -- slot. Concurrent requests of the SAME family fired while typing share one
--- generation (no bump), so each still lands its result in the cache and may
--- repaint if it matches the live cursor; a dismiss invalidates them all at once.
+-- generation (no bump), so each still lands its result in the cache. The first
+-- result published for a buffer/cursor state owns its extmark until that state
+-- changes; a dismiss invalidates all requests in the generation at once.
 ---@param ctx minuet.VirtualtextSuggestionContext
 ---@return integer
 local function bump_request_generation(ctx)
@@ -636,7 +637,7 @@ end
 local function clear_preview(ctx)
     api.nvim_buf_del_extmark(0, internal.ns_id, internal.extmark_id)
     if ctx then
-        ctx.rendered_key = nil
+        ctx.rendered_state = nil
     end
 end
 
@@ -662,10 +663,10 @@ local function get_current_suggestion(ctx)
 end
 
 ---@param ctx? minuet.VirtualtextSuggestionContext
----@param preserve_same_content? boolean Do not repaint an extmark whose visible
----content is unchanged. Async publishers use this so cache/cycle metadata can
----grow without mutating the display while the user is idle.
-local function update_preview(ctx, preserve_same_content)
+---@param preserve_idle_display? boolean Async publishers set this so cache and
+---cycle state can grow without mutating the extmark until the buffer or cursor
+---changes. Explicit user actions leave it unset and may repaint immediately.
+local function update_preview(ctx, preserve_idle_display)
     ctx = ctx or get_ctx()
 
     local suggestion = get_current_suggestion(ctx)
@@ -686,8 +687,13 @@ local function update_preview(ctx, preserve_same_content)
         display_lines = vim.list_slice(display_lines, 1, cut)
     end
 
-    local rendered_key = table.concat(display_lines, '\n')
-    if preserve_same_content and ctx.rendered_key == rendered_key then
+    local cursor = api.nvim_win_get_cursor(0)
+    local rendered_state = {
+        changedtick = api.nvim_buf_get_changedtick(0),
+        row = cursor[1],
+        col = cursor[2],
+    }
+    if preserve_idle_display and vim.deep_equal(ctx.rendered_state, rendered_state) then
         local extmark = api.nvim_buf_get_extmark_by_id(0, internal.ns_id, internal.extmark_id, { details = false })
         if extmark[1] then
             return
@@ -707,9 +713,6 @@ local function update_preview(ctx, preserve_same_content)
     elseif n_sug > 1 then
         annot = '(' .. ctx.choice .. '/' .. n_sug .. ')'
     end
-
-    local cursor_col = vim.fn.col '.'
-    local cursor_line = vim.fn.line '.'
 
     local extmark = {
         id = internal.extmark_id,
@@ -733,8 +736,8 @@ local function update_preview(ctx, preserve_same_content)
 
     extmark.hl_mode = 'replace'
 
-    api.nvim_buf_set_extmark(0, internal.ns_id, cursor_line - 1, cursor_col - 1, extmark)
-    ctx.rendered_key = rendered_key
+    api.nvim_buf_set_extmark(0, internal.ns_id, cursor[1] - 1, cursor[2], extmark)
+    ctx.rendered_state = rendered_state
 
     if not ctx.shown_choices[suggestion] then
         ctx.shown_choices[suggestion] = true
@@ -1151,10 +1154,11 @@ local function trigger(bufnr, overrides, is_retry, is_manual, extend)
     -- (codestral, 64 tokens: first line ~575ms vs stream done ~955ms, see
     -- scripts/probe_codestral_first_line_stream.py). Paint it then instead of
     -- at request exit. The partial never enters the cache; when the request
-    -- settles, the full completion replaces it seamlessly (same visible line,
-    -- longer hidden tail). Uncapped triggers (e.g. a manual multi-line keymap)
-    -- get no hook: their visible portion is only final at the end of the
-    -- stream, which is the paint-on-exit behavior they already have.
+    -- settles, the full completion replaces it internally (same visible line,
+    -- longer hidden tail) without repainting the idle extmark. Uncapped triggers
+    -- (e.g. a manual multi-line keymap) get no hook: their visible portion is
+    -- only final at the end of the stream, which is the paint-on-exit behavior
+    -- they already have.
     if ctx.display_max_lines then
         local display_max_lines = ctx.display_max_lines
         context.opts.on_stream_partial = function(text)
@@ -1400,7 +1404,7 @@ local function trigger(bufnr, overrides, is_retry, is_manual, extend)
             ctx.suggestions = effective
             ctx.choice = effective_choice
             ctx.shown_choices = ctx.shown_choices or {}
-            update_preview(ctx, true)
+            update_preview(ctx, not is_manual)
         end
 
         -- Keep retrying until the state holds n_completions *fresh* completions

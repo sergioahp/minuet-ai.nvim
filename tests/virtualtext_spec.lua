@@ -2368,6 +2368,7 @@ return {
                     throttle = 0,
                     max_retries = 0,
                     max_display_lines = 1,
+                    auto_trigger_mode = 'full',
                 },
                 provider_options = {
                     test = { model = 'fixture-model', optional = {} },
@@ -2389,12 +2390,13 @@ return {
             local original_ve = vim.o.virtualedit
             vim.o.virtualedit = 'onemore'
             local bufnr = helpers.create_buffer({ 'x = ' }, { 1, 4 })
+            vim.b.minuet_virtual_text_auto_trigger_mode = 'full'
             local original_mode = vim.fn.mode
             vim.fn.mode = function()
                 return 'i'
             end
 
-            virtualtext.action.fire()
+            vim.api.nvim_exec_autocmds('CursorMovedI', { buffer = bufnr })
 
             -- Request #1 publishes its finalized visible line while its hidden
             -- tail is still streaming.
@@ -2445,6 +2447,7 @@ return {
                     debounce = 0,
                     throttle = 0,
                     max_retries = 0,
+                    auto_trigger_mode = 'full',
                 },
                 provider_options = {
                     test = { model = 'fixture-model', optional = {} },
@@ -2464,12 +2467,13 @@ return {
             local original_ve = vim.o.virtualedit
             vim.o.virtualedit = 'onemore'
             local bufnr = helpers.create_buffer({ 'x = ' }, { 1, 4 })
+            vim.b.minuet_virtual_text_auto_trigger_mode = 'full'
             local original_mode = vim.fn.mode
             vim.fn.mode = function()
                 return 'i'
             end
 
-            virtualtext.action.fire()
+            vim.api.nvim_exec_autocmds('CursorMovedI', { buffer = bufnr })
             pending_callback({ 'first-choice' }, false)
             local published = get_suggestion_text(bufnr, virtualtext.ns_id)
             helpers.expect_equal(published, 'first-choice')
@@ -2483,6 +2487,18 @@ return {
 
             virtualtext.action.next()
             helpers.expect_match(get_suggestion_text(bufnr, virtualtext.ns_id), '^second%-choice')
+
+            -- A real edit advances changedtick and the cursor, opening a new
+            -- publication state for the next auto-trigger response.
+            vim.api.nvim_buf_set_text(bufnr, 0, 4, 0, 4, { 'y' })
+            vim.api.nvim_win_set_cursor(0, { 1, 5 })
+            vim.api.nvim_exec_autocmds('CursorMovedI', { buffer = bufnr })
+            pending_callback({ 'new-state-choice' }, true)
+            helpers.expect_match(
+                get_suggestion_text(bufnr, virtualtext.ns_id),
+                '^new%-state%-choice',
+                'typing authorizes the next auto-trigger publication'
+            )
 
             virtualtext.action.dismiss()
             vim.fn.mode = original_mode

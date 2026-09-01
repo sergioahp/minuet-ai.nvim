@@ -818,6 +818,11 @@ default_config = {
     -- "verbose": Display most notifications
     -- "warn": Display warnings and errors only
     -- "error": Display errors only
+    -- Notifications are flattened onto a single line that fits the command
+    -- line, so a completion failing in the background does not interrupt
+    -- typing with the hit-enter prompt (Neovim prompts on every message when
+    -- cmdheight = 0, whatever its length). Long payloads are cut short; use
+    -- `:Minuet log on` when you need the full request and response bodies.
     notify = 'warn',
     -- The request timeout, measured in seconds. When streaming is enabled
     -- (stream = true), setting a shorter request_timeout allows for faster
@@ -2110,7 +2115,9 @@ If your setup failed, there are two most likely reasons:
    - Use a smaller model
    - Set a longer request timeout (e.g., `config.request_timeout = 5`)
 
-To diagnose issues, set `config.notify = debug` and examine the output.
+To diagnose issues, set `config.notify = debug` and examine the output. Since
+notifications are shortened to one command line, run `:Minuet log on` and read
+the JSONL log when you need the untruncated request and response bodies.
 
 # Contributing
 

@@ -19,6 +19,45 @@ function M.replace_string_literal(text, needle, replacement)
     return table.concat(result)
 end
 
+--- Squeeze a message onto a single line that fits the cmdline area. Anything
+--- larger makes Neovim raise the hit-enter prompt, and minuet's messages arrive
+--- from completion callbacks while the user is typing, so blocking on them
+--- steals keystrokes. Untruncated request/response bodies remain available
+--- through `request_log` (`:Minuet log on`).
+---@param msg string
+---@return string
+local function fit_cmdline(msg)
+    -- Embedded newlines (vim.inspect of an API payload) are the usual overflow.
+    msg = msg:gsub('%s+', ' ')
+
+    -- Measured across widths on nvim 0.12: the prompt appears once a message
+    -- reaches 'columns' - 11 while 'showcmd' sits on the last line, another 17
+    -- columns earlier when the ruler is down there as well, and 'columns'
+    -- otherwise. Extra 'cmdheight' rows are usable in full.
+    local reserved = 1
+    if vim.o.showcmd and vim.o.showcmdloc == 'last' then
+        reserved = reserved + 11
+    end
+    if vim.o.ruler and vim.o.laststatus <= 1 then
+        reserved = reserved + 17
+    end
+
+    -- A 'cmdheight' of 0 leaves no room at all: there every message scrolls the
+    -- screen and prompts, whatever length we hand it.
+    local budget = math.max(vim.o.columns * math.max(vim.o.cmdheight, 1) - reserved, 1)
+    if vim.fn.strdisplaywidth(msg) <= budget then
+        return msg
+    end
+
+    -- Character cuts can still overshoot the budget on wide (CJK) text.
+    local truncated = vim.fn.strcharpart(msg, 0, budget - 3)
+    while vim.fn.strdisplaywidth(truncated) > budget - 3 do
+        truncated = vim.fn.strcharpart(truncated, 0, vim.fn.strchars(truncated) - 1)
+    end
+
+    return truncated .. '...'
+end
+
 function M.notify(msg, minuet_level, vim_level, opts)
     local config = require('minuet').config
     local notify_levels = {
@@ -29,7 +68,7 @@ function M.notify(msg, minuet_level, vim_level, opts)
     }
 
     if config.notify and notify_levels[minuet_level] >= notify_levels[config.notify] then
-        vim.notify(msg, vim_level, opts)
+        vim.notify(fit_cmdline(msg), vim_level, opts)
     end
 end
 
@@ -965,11 +1004,9 @@ function M.stream_decode(response, data_file, provider, get_text_fn)
         local notified_on_error = false
         for _, line in ipairs(responses) do
             if line:find 'error' then
-                M.notify(
-                    provider .. ' returns error on streaming: ' .. vim.inspect(responses),
-                    'error',
-                    vim.log.levels.INFO
-                )
+                -- Only the head of a notification survives the cmdline fit, so
+                -- lead with the offending line rather than the whole stream.
+                M.notify(provider .. ' returns error on streaming: ' .. line, 'error', vim.log.levels.INFO)
 
                 notified_on_error = true
 

@@ -2350,6 +2350,147 @@ return {
         end,
     },
     {
+        -- With parallel FIM requests, request #1 can stream a complete visible
+        -- line before it settles. If request #2 then exhausts the backend's
+        -- first-request grace, its aggregate callback must not replace that
+        -- already-published line. Request #1 eventually settling may enrich the
+        -- cached completion and cycle list, but that is not permission to
+        -- repaint a buffer state the user has not changed.
+        name = 'virtualtext keeps an early streamed line stable as parallel requests settle',
+        run = function()
+            helpers.setup_root_config {
+                provider = 'test',
+                debounce = 0,
+                throttle = 0,
+                n_completions = 2,
+                virtualtext = {
+                    debounce = 0,
+                    throttle = 0,
+                    max_retries = 0,
+                    max_display_lines = 1,
+                },
+                provider_options = {
+                    test = { model = 'fixture-model', optional = {} },
+                },
+            }
+
+            local on_stream_partial
+            local pending_callback
+            package.loaded['minuet.backends.test'] = {
+                complete = function(context, callback)
+                    on_stream_partial = context.opts.on_stream_partial
+                    pending_callback = callback
+                end,
+            }
+
+            local virtualtext = helpers.reload 'minuet.virtualtext'
+            virtualtext.setup()
+
+            local original_ve = vim.o.virtualedit
+            vim.o.virtualedit = 'onemore'
+            local bufnr = helpers.create_buffer({ 'x = ' }, { 1, 4 })
+            local original_mode = vim.fn.mode
+            vim.fn.mode = function()
+                return 'i'
+            end
+
+            virtualtext.action.fire()
+
+            -- Request #1 publishes its finalized visible line while its hidden
+            -- tail is still streaming.
+            on_stream_partial 'first-choice\npartial tail'
+            local published = get_suggestion_text(bufnr, virtualtext.ns_id)
+            helpers.expect_equal(published, 'first-choice')
+
+            -- Request #2 settles after the grace timeout. It is the only cached
+            -- result so far, but the rendered extmark must remain byte-for-byte
+            -- unchanged, including its cycle annotation.
+            pending_callback({ 'second-choice\nsecond tail' }, false)
+            helpers.expect_equal(
+                get_suggestion_text(bufnr, virtualtext.ns_id),
+                published,
+                'a later parallel result must not replace or annotate the published line'
+            )
+
+            -- Request #1 settles and moves to the front of the send-ordered
+            -- aggregate. The full result should replace the partial internally,
+            -- without changing the rendered line until the user acts.
+            pending_callback({ 'first-choice\nfinished tail', 'second-choice\nsecond tail' }, true)
+            helpers.expect_equal(
+                get_suggestion_text(bufnr, virtualtext.ns_id),
+                published,
+                'settling the streamed request must not mutate an idle display'
+            )
+
+            -- Explicit cycling is permission to change the display and proves
+            -- the background callback still populated the alternative list.
+            virtualtext.action.prev()
+            helpers.expect_match(get_suggestion_text(bufnr, virtualtext.ns_id), '^second%-choice')
+
+            virtualtext.action.dismiss()
+            vim.fn.mode = original_mode
+            vim.o.virtualedit = original_ve
+            helpers.delete_buffer(bufnr)
+        end,
+    },
+    {
+        name = 'virtualtext does not publish aggregate metadata while the buffer state is idle',
+        run = function()
+            helpers.setup_root_config {
+                provider = 'test',
+                debounce = 0,
+                throttle = 0,
+                n_completions = 2,
+                virtualtext = {
+                    debounce = 0,
+                    throttle = 0,
+                    max_retries = 0,
+                },
+                provider_options = {
+                    test = { model = 'fixture-model', optional = {} },
+                },
+            }
+
+            local pending_callback
+            package.loaded['minuet.backends.test'] = {
+                complete = function(_, callback)
+                    pending_callback = callback
+                end,
+            }
+
+            local virtualtext = helpers.reload 'minuet.virtualtext'
+            virtualtext.setup()
+
+            local original_ve = vim.o.virtualedit
+            vim.o.virtualedit = 'onemore'
+            local bufnr = helpers.create_buffer({ 'x = ' }, { 1, 4 })
+            local original_mode = vim.fn.mode
+            vim.fn.mode = function()
+                return 'i'
+            end
+
+            virtualtext.action.fire()
+            pending_callback({ 'first-choice' }, false)
+            local published = get_suggestion_text(bufnr, virtualtext.ns_id)
+            helpers.expect_equal(published, 'first-choice')
+
+            pending_callback({ 'first-choice', 'second-choice' }, true)
+            helpers.expect_equal(
+                get_suggestion_text(bufnr, virtualtext.ns_id),
+                published,
+                'a growing aggregate must not add an annotation while the user is idle'
+            )
+
+            virtualtext.action.next()
+            helpers.expect_match(get_suggestion_text(bufnr, virtualtext.ns_id), '^second%-choice')
+
+            virtualtext.action.dismiss()
+            vim.fn.mode = original_mode
+            vim.o.virtualedit = original_ve
+            helpers.delete_buffer(bufnr)
+        end,
+    },
+    {
         -- A fully consumed suggestion frees its per-state lock. The accept
         -- itself reconsiders the cache and paints the next compatible sibling
         -- in the same synchronous event, and a later re-derive at the consumed

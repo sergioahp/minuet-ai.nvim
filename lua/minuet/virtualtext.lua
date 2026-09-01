@@ -513,7 +513,7 @@ local function derive_suggestions(ctx, params, cur_before, cur_after, cur_incomp
     ctx.cur_incomplete_before = cur_incomplete_before
 
     local choice = 1
-    local _, pinned = compatible_lock(ctx, params, cur_before, cur_after, cur_incomplete_before)
+    local lock, pinned = compatible_lock(ctx, params, cur_before, cur_after, cur_incomplete_before)
     -- A lock whose completion the user has fully consumed (accepted or typed
     -- out -- remainder empty) is spent: it must not pin the state to an empty
     -- ghost text. Fall through to the natural ranking instead, whose set_lock
@@ -529,6 +529,15 @@ local function derive_suggestions(ctx, params, cur_before, cur_after, cur_incomp
         end
         if found then
             choice = found
+            -- A streamed lock may contain only the partial available when its
+            -- visible lines first became final. Once the matching cache group
+            -- has the settled completion, advance the lock to that full group
+            -- representative without changing the visible choice.
+            if lock.completion ~= results[found] then
+                lock.completion = results[found]
+                lock.lines_before = cur_before
+                lock.lines_after = cur_after
+            end
         else
             -- Locked completion is past the hard band (or otherwise unpooled):
             -- keep it visible regardless, appended after the fresher options.
@@ -569,6 +578,7 @@ end
 ---@field cur_after? string after-cursor text of the most recent derive
 ---@field cur_incomplete_before? boolean whether cur_before was left-truncated
 ---@field display_max_lines? integer render at most this many content lines of the active suggestion (nil = all)
+---@field rendered_key? string visible completion content currently painted, excluding the cycle annotation
 ---@field fetch_state_before? string before-cursor text where the current top-up budget started
 ---@field fetch_params? table params of the current top-up budget's state
 ---@field fetched_this_state? boolean whether a non-retry request already fired at the current top-up state
@@ -622,8 +632,12 @@ local function stop_timer()
     end
 end
 
-local function clear_preview()
+---@param ctx? minuet.VirtualtextSuggestionContext
+local function clear_preview(ctx)
     api.nvim_buf_del_extmark(0, internal.ns_id, internal.extmark_id)
+    if ctx then
+        ctx.rendered_key = nil
+    end
 end
 
 ---@param ctx? minuet.VirtualtextSuggestionContext
@@ -648,17 +662,19 @@ local function get_current_suggestion(ctx)
 end
 
 ---@param ctx? minuet.VirtualtextSuggestionContext
-local function update_preview(ctx)
+---@param preserve_same_content? boolean Do not repaint an extmark whose visible
+---content is unchanged. Async publishers use this so cache/cycle metadata can
+---grow without mutating the display while the user is idle.
+local function update_preview(ctx, preserve_same_content)
     ctx = ctx or get_ctx()
 
     local suggestion = get_current_suggestion(ctx)
     local display_lines = suggestion and vim.split(suggestion, '\n', { plain = true }) or {}
 
-    clear_preview()
-
     local show_on_completion_menu = require('minuet').config.virtualtext.show_on_completion_menu
 
     if not suggestion or #display_lines == 0 or (not show_on_completion_menu and completion_menu_visible()) then
+        clear_preview(ctx)
         return
     end
 
@@ -669,6 +685,16 @@ local function update_preview(ctx)
     if cut then
         display_lines = vim.list_slice(display_lines, 1, cut)
     end
+
+    local rendered_key = table.concat(display_lines, '\n')
+    if preserve_same_content and ctx.rendered_key == rendered_key then
+        local extmark = api.nvim_buf_get_extmark_by_id(0, internal.ns_id, internal.extmark_id, { details = false })
+        if extmark[1] then
+            return
+        end
+    end
+
+    clear_preview(ctx)
 
     local annot = ''
 
@@ -708,6 +734,7 @@ local function update_preview(ctx)
     extmark.hl_mode = 'replace'
 
     api.nvim_buf_set_extmark(0, internal.ns_id, cursor_line - 1, cursor_col - 1, extmark)
+    ctx.rendered_key = rendered_key
 
     if not ctx.shown_choices[suggestion] then
         ctx.shown_choices[suggestion] = true
@@ -733,7 +760,7 @@ local function cleanup(ctx, soft)
         bump_request_generation(ctx)
         ctx.last_trigger_was_manual = nil
     end
-    clear_preview()
+    clear_preview(ctx)
 end
 
 --- Size the prefix independently of the suffix. utils.get_context splits a
@@ -848,7 +875,7 @@ end
 ---@param req_before string before-cursor text the completion was requested at
 ---@param req_after string after-cursor text the completion was requested at
 ---@param text string
----@return string?
+---@return string? remainder, table? context live context used to derive it
 local function live_remainder(cfg, req_before, req_after, text)
     local ctx_now = vt_get_context(utils.make_cmp_context(), cfg)
     if not suffix_compatible(req_after, ctx_now.lines_after) then
@@ -861,7 +888,7 @@ local function live_remainder(cfg, req_before, req_after, text)
     if text:sub(1, typed_since) ~= ctx_now.lines_before:sub(#ctx_now.lines_before - typed_since + 1) then
         return nil
     end
-    return text:sub(typed_since + 1)
+    return text:sub(typed_since + 1), ctx_now
 end
 
 ---@param bufnr integer
@@ -1017,7 +1044,7 @@ local function trigger(bufnr, overrides, is_retry, is_manual, extend)
         ctx.suggestions = cached
         ctx.choice = choice
         ctx.shown_choices = ctx.shown_choices or {}
-        update_preview(ctx)
+        update_preview(ctx, not is_manual)
     end
 
     if extend then
@@ -1142,7 +1169,7 @@ local function trigger(bufnr, overrides, is_retry, is_manual, extend)
             end
             text = truncate_at_stop_tokens(text, params.stop_tokens)
             -- The user may have typed while the stream is in flight.
-            local remainder = live_remainder(cfg, cur_before, cur_after, text)
+            local remainder, live_context = live_remainder(cfg, cur_before, cur_after, text)
             -- Paint only once the visible portion is final, i.e. the stream has
             -- produced at least one display line beyond the cut.
             if not remainder or not display_cut(vim.split(remainder, '\n', { plain = true }), display_max_lines) then
@@ -1151,7 +1178,18 @@ local function trigger(bufnr, overrides, is_retry, is_manual, extend)
             ctx.suggestions = { remainder }
             ctx.choice = 1
             ctx.shown_choices = ctx.shown_choices or {}
-            update_preview(ctx)
+            -- Publishing is the linearization point for this buffer state. The
+            -- partial is not cached yet, so explicitly lock it before any
+            -- parallel request callback can derive a competing choice.
+            set_lock(
+                ctx,
+                params,
+                remainder,
+                live_context.lines_before,
+                live_context.lines_after,
+                live_context.opts.is_incomplete_before
+            )
+            update_preview(ctx, true)
         end
     elseif extend then
         -- An extension only ever appends to the ghost text already on screen, so
@@ -1362,7 +1400,7 @@ local function trigger(bufnr, overrides, is_retry, is_manual, extend)
             ctx.suggestions = effective
             ctx.choice = effective_choice
             ctx.shown_choices = ctx.shown_choices or {}
-            update_preview(ctx)
+            update_preview(ctx, true)
         end
 
         -- Keep retrying until the state holds n_completions *fresh* completions
@@ -1681,7 +1719,7 @@ local function accept_n_chars(n_chars)
         ctx.distinct_active = nil
         ctx.distinct_silent = nil
         ctx.extend_active = nil
-        clear_preview()
+        clear_preview(ctx)
         api.nvim_buf_set_text(0, line, col, line, col, lines)
         local new_col = #lines[#lines]
         if #lines == 1 then

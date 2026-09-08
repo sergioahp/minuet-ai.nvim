@@ -260,7 +260,127 @@ return {
                 )
                 helpers.expect_match(result.message.content, '%*%*%* No Edit')
                 helpers.expect_equal(result.inspect.outcome, 'no edit')
-                helpers.expect_equal(result.inspect.replacement, '$')
+                -- inspect reports the replacement after the elided blank is put
+                -- back, i.e. what a preview would have applied.
+                helpers.expect_equal(result.inspect.replacement, '$\n')
+            end, debug.traceback)
+
+            vim.env.INCEPTION_API_KEY = original_api_key
+            vim.env.MINUET_MOCK_INCEPTION_CONTENT = original_mock_content
+            helpers.delete_buffer(bufnr)
+
+            if not ok then
+                error(err)
+            end
+        end,
+    },
+    {
+        -- Mercury returns the region fenced with one '\n' per line, so a blank
+        -- last line arrives as a blank line before the closing fence. Parsing
+        -- that as "no last line" made every mid-file suggestion carry a spurious
+        -- blank-line deletion at the region tail.
+        name = 'Inception Mercury Edit keeps a trailing blank line the model returned',
+        run = function()
+            local original_api_key = vim.env.INCEPTION_API_KEY
+            local original_mock_content = vim.env.MINUET_MOCK_INCEPTION_CONTENT
+            local bufnr
+
+            local ok, err = xpcall(function()
+                local mock = vim.fn.getcwd() .. '/tests/scripts/mock_inception_edit.sh'
+                vim.env.INCEPTION_API_KEY = 'test-key'
+                vim.env.MINUET_MOCK_INCEPTION_CONTENT = 'return 42\n'
+
+                helpers.setup_root_config {
+                    curl_cmd = mock,
+                    duet = {
+                        provider = 'inception_edit',
+                        request_timeout = 5,
+                        provider_options = {
+                            inception_edit = {
+                                end_point = 'http://127.0.0.1/inception-edit-mock',
+                                model = 'mercury-edit-2',
+                                api_key = 'INCEPTION_API_KEY',
+                                name = 'Inception Fixture',
+                                lines_before = 0,
+                                lines_after = 1,
+                                max_tokens = 128,
+                                optional = {},
+                            },
+                        },
+                    },
+                }
+
+                local duet = helpers.reload 'minuet.duet'
+                duet.setup()
+
+                bufnr = helpers.create_buffer({ 'return 1', '', 'return 2' }, { 1, 8 })
+                require('minuet.duet.session').clear(bufnr)
+                require('minuet.duet.session').rebase(bufnr)
+
+                duet.action.predict()
+                helpers.wait_until(function()
+                    return duet.action.is_visible()
+                end, 3000, 'duet preview did not become visible for the trailing blank region')
+                duet.action.apply()
+
+                helpers.expect_equal(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), { 'return 42', '', 'return 2' })
+            end, debug.traceback)
+
+            vim.env.INCEPTION_API_KEY = original_api_key
+            vim.env.MINUET_MOCK_INCEPTION_CONTENT = original_mock_content
+            helpers.delete_buffer(bufnr)
+
+            if not ok then
+                error(err)
+            end
+        end,
+    },
+    {
+        name = 'Inception Mercury Edit restores a trailing blank the model elided mid-file',
+        run = function()
+            local original_api_key = vim.env.INCEPTION_API_KEY
+            local original_mock_content = vim.env.MINUET_MOCK_INCEPTION_CONTENT
+            local bufnr
+
+            local ok, err = xpcall(function()
+                local mock = vim.fn.getcwd() .. '/tests/scripts/mock_inception_edit.sh'
+                vim.env.INCEPTION_API_KEY = 'test-key'
+                vim.env.MINUET_MOCK_INCEPTION_CONTENT = 'return 42'
+
+                helpers.setup_root_config {
+                    curl_cmd = mock,
+                    duet = {
+                        provider = 'inception_edit',
+                        request_timeout = 5,
+                        provider_options = {
+                            inception_edit = {
+                                end_point = 'http://127.0.0.1/inception-edit-mock',
+                                model = 'mercury-edit-2',
+                                api_key = 'INCEPTION_API_KEY',
+                                name = 'Inception Fixture',
+                                lines_before = 0,
+                                lines_after = 1,
+                                max_tokens = 128,
+                                optional = {},
+                            },
+                        },
+                    },
+                }
+
+                local duet = helpers.reload 'minuet.duet'
+                duet.setup()
+
+                bufnr = helpers.create_buffer({ 'return 1', '', 'return 2' }, { 1, 8 })
+                require('minuet.duet.session').clear(bufnr)
+                require('minuet.duet.session').rebase(bufnr)
+
+                duet.action.predict()
+                helpers.wait_until(function()
+                    return duet.action.is_visible()
+                end, 3000, 'duet preview did not become visible for the elided blank region')
+                duet.action.apply()
+
+                helpers.expect_equal(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), { 'return 42', '', 'return 2' })
             end, debug.traceback)
 
             vim.env.INCEPTION_API_KEY = original_api_key

@@ -10,8 +10,12 @@ local log = require 'minuet.log'
 
 local M = {}
 
+-- Keeps the newline that terminates the fenced body's last line: the region is
+-- shipped to the model as one '\n' per line, and the response echoes that, so
+-- eating the terminator here would make a blank last line indistinguishable
+-- from no last line at all.
 local function strip_markdown_fence(content)
-    local fenced = content:match '^%s*```[^\n]*\n(.-)\n```%s*$'
+    local fenced = content:match '^%s*```[^\n]*\n(.-)```%s*$'
     if fenced then
         return fenced
     end
@@ -20,39 +24,45 @@ end
 
 local function split_region(content)
     content = strip_markdown_fence(content or '')
-    local had_trailing_newline = content:sub(-1) == '\n'
+    -- The marker may sit alone on the region's last line; drop it before the
+    -- terminator so that line survives as a blank one.
     content = content:gsub('<|cursor|>', '')
-    if had_trailing_newline and content:sub(-1) == '\n' then
+    if content:sub(-1) == '\n' then
         content = content:sub(1, -2)
     end
     return vim.split(content, '\n', { plain = true })
 end
 
-local function is_same_region_or_eof_blank_elided(region, replacement, bufnr)
-    if vim.deep_equal(region.original_lines, replacement) then
-        return true
-    end
-
-    if not (bufnr and vim.api.nvim_buf_is_valid(bufnr)) then
-        return false
-    end
-    if region.end_row ~= vim.api.nvim_buf_line_count(bufnr) then
-        return false
-    end
-
-    local trimmed = {}
-    for i = 1, #replacement do
-        trimmed[i] = region.original_lines[i]
-    end
-    if not vim.deep_equal(trimmed, replacement) then
-        return false
-    end
-    for i = #replacement + 1, #(region.original_lines or {}) do
-        if region.original_lines[i] ~= '' then
-            return false
+local function trailing_blank_count(lines)
+    local n = 0
+    for i = #lines, 1, -1 do
+        if lines[i] ~= '' then
+            break
         end
+        n = n + 1
     end
-    return #replacement < #(region.original_lines or {})
+    return n
+end
+
+-- Mercury sometimes returns the region with its trailing blank line(s) elided.
+-- The region tail is a cursor window boundary, not a syntactic unit, so that
+-- deletion is never the edit the user wants: it either rides along with a real
+-- edit as a frivolous extra hunk, or is the whole "edit". Put the blanks back;
+-- the caller's identity check then collapses the latter case to a no-op.
+---@param original_lines string[]
+---@param replacement string[]
+---@return string[]
+local function restore_elided_trailing_blanks(original_lines, replacement)
+    local want = trailing_blank_count(original_lines)
+    local have = trailing_blank_count(replacement)
+    if have >= want then
+        return replacement
+    end
+    local out = vim.deepcopy(replacement)
+    for _ = have + 1, want do
+        out[#out + 1] = ''
+    end
+    return out
 end
 
 local function request_inception_edit(opts, callback, ctx)
@@ -176,12 +186,12 @@ local function request_inception_edit(opts, callback, ctx)
             -- fuzzy matcher can retarget repeated text elsewhere in the buffer.
             local replacement
             if vim.trim(strip_markdown_fence(content)) ~= 'None' then
-                replacement = split_region(content)
+                replacement = restore_elided_trailing_blanks(region.original_lines or {}, split_region(content))
                 inspect.replacement = table.concat(replacement, '\n')
             else
                 inspect.replacement = 'None'
             end
-            if not replacement or is_same_region_or_eof_blank_elided(region, replacement, ctx.bufnr) then
+            if not replacement or vim.deep_equal(region.original_lines, replacement) then
                 inspect.outcome = 'no edit'
                 if ctx.mode == 'manual' then
                     inspect.error = 'Mercury Edit returned no change for manual prediction'

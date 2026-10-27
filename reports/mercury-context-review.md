@@ -2,6 +2,10 @@
 
 Reviewed on 2026-10-27 against baseline `79d0315`.
 
+Follow-up: [native API validation](mercury-context-live.md) subsequently reproduced
+a real context-size rejection and verified the bounded fix through preview and
+apply. The initial review below records the evidence available before that run.
+
 Select approach B, `fix/mercury-prompt-budget` at `5e1fa0c`, for landing on
 main. It prevents oversized generated prompts before transport and covers all
 sources of context while preserving the original editable region. No blocking

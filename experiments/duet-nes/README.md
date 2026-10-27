@@ -44,6 +44,7 @@ INCEPTION_API_KEY=... OPENROUTER_API_KEY=... \
 | `inspect_smoke.lua` | Float render/toggle + single-prediction transcript capture. |
 | `inspect_session_smoke.lua` | Multi-prediction session history + result tracking (accepted/dismissed/ignored). |
 | `nes_mercury_edit.lua` | Corrected-tableau live comparison: OpenRouter chat/tool-call NES (`O`) vs direct Inception Mercury Edit 2 native edit endpoint (`M`). |
+| `validate_mercury_context.lua` | Four native Mercury Edit 2 calls comparing the original and bounded prompt builders on project source; checks preview/apply and enforces a 1M-token reservation ceiling. Run from the repository root with `nvim --headless -u NONE -i NONE -n -l experiments/duet-nes/scripts/validate_mercury_context.lua`. |
 | `plot_mark_prompt_repro.lua` | Offline Mercury prompt repro for the Typst `plot(..., mark: none)` workflow; writes exact prompt sections and summary flags under `tmp/`. |
 
 ## Findings (these drove the commits on this branch)

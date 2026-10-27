@@ -1,0 +1,268 @@
+{
+  "results": {
+    "model": "mercury-edit-2",
+    "endpoint": "https://api.inceptionlabs.ai/v1/edit/completions",
+    "baseline_revision": "79d0315",
+    "token_limit": 1000000,
+    "usd_limit": 0.5,
+    "token_upper_bound_reserved": 567978,
+    "usage_tokens_reported": 23443,
+    "list_price_usd_reported": 0.00607075,
+    "cases": [
+      {
+        "name": "source-1075-lines_full",
+        "finish_reason": "stop",
+        "usage": {
+          "total_tokens": 9214,
+          "prompt_tokens": 9072,
+          "completion_tokens": 142,
+          "completion_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "prompt_tokens_details": {
+            "cached_tokens": 9
+          }
+        },
+        "preview_visible": true,
+        "cursor_row": 522,
+        "started_at": "2026-10-27T07:50:47Z",
+        "exact_expected_edit": true,
+        "buffer_unchanged": false,
+        "outside_region_unchanged": true,
+        "region": {
+          "path": "tmp/mercury-context/mercury-edit-2_cap-32000_2026-10-27_07-50-47/fixture_1_full.lua",
+          "original": "                            ctx.last.result = queue and 'queued' or 'shown'\n                        end\n                        if not queue then\n                            internal.shown = ctx.last\n                        end\n                        local shown_memory = not queue and remember_shown(ctx.bufnr, patch) or nil\n                        clear_pending(ctx.state, ctx.seq)\n                        show_preview(ctx.bufnr, ctx.state, ctx.buf_lines, new_lines, ctx.changedtick, patch, {\n                            queue = queue,\n                            focus_kind = ctx.focus_kind,\n                            last = ctx.last,\n                            memory_entry = memory_entry,\n                        })\n                        return\n                    end\n                    table.insert(ctx.messages, assistant_echo(message))",
+          "start_row": 517,
+          "end_row": 532
+        },
+        "lines": 1075,
+        "token_upper_bound_reserved": 89244,
+        "completed": true,
+        "outcome": "preview shown",
+        "prompt_bytes": 40884,
+        "elapsed_ms": 1003.914516,
+        "copies": 1,
+        "variant": "full"
+      },
+      {
+        "name": "source-1075-lines_bounded",
+        "finish_reason": "stop",
+        "usage": {
+          "total_tokens": 7158,
+          "prompt_tokens": 7018,
+          "completion_tokens": 140,
+          "completion_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "prompt_tokens_details": {
+            "cached_tokens": 55
+          }
+        },
+        "preview_visible": true,
+        "cursor_row": 522,
+        "started_at": "2026-10-27T07:50:48Z",
+        "exact_expected_edit": true,
+        "buffer_unchanged": false,
+        "outside_region_unchanged": true,
+        "region": {
+          "context_start_row": 115,
+          "context_end_row": 932,
+          "path": "tmp/mercury-context/mercury-edit-2_cap-32000_2026-10-27_07-50-47/fixture_1_bounded.lua",
+          "original": "                            ctx.last.result = queue and 'queued' or 'shown'\n                        end\n                        if not queue then\n                            internal.shown = ctx.last\n                        end\n                        local shown_memory = not queue and remember_shown(ctx.bufnr, patch) or nil\n                        clear_pending(ctx.state, ctx.seq)\n                        show_preview(ctx.bufnr, ctx.state, ctx.buf_lines, new_lines, ctx.changedtick, patch, {\n                            queue = queue,\n                            focus_kind = ctx.focus_kind,\n                            last = ctx.last,\n                            memory_entry = memory_entry,\n                        })\n                        return\n                    end\n                    table.insert(ctx.messages, assistant_echo(message))",
+          "start_row": 517,
+          "end_row": 532,
+          "max_prompt_bytes": 32000,
+          "prompt_bytes": 31999
+        },
+        "lines": 1075,
+        "token_upper_bound_reserved": 70956,
+        "completed": true,
+        "outcome": "preview shown",
+        "prompt_bytes": 31999,
+        "elapsed_ms": 827.639577,
+        "copies": 1,
+        "variant": "bounded"
+      },
+      {
+        "name": "source-4300-lines_full",
+        "error": "API error: {\n  code = \"context_length_exceeded\",\n  message = \"You exceeded the maximum context length for this model of 128000. Please reduce the length of the messages or completion.\",\n  param = \"messages\",\n  type = \"invalid_request_error\"\n}",
+        "cursor_row": 2672,
+        "started_at": "2026-10-27T07:50:49Z",
+        "exact_expected_edit": false,
+        "buffer_unchanged": true,
+        "outside_region_unchanged": true,
+        "region": {
+          "path": "tmp/mercury-context/mercury-edit-2_cap-32000_2026-10-27_07-50-47/fixture_4_full.lua",
+          "original": "                            ctx.last.result = queue and 'queued' or 'shown'\n                        end\n                        if not queue then\n                            internal.shown = ctx.last\n                        end\n                        local shown_memory = not queue and remember_shown(ctx.bufnr, patch) or nil\n                        clear_pending(ctx.state, ctx.seq)\n                        show_preview(ctx.bufnr, ctx.state, ctx.buf_lines, new_lines, ctx.changedtick, patch, {\n                            queue = queue,\n                            focus_kind = ctx.focus_kind,\n                            last = ctx.last,\n                            memory_entry = memory_entry,\n                        })\n                        return\n                    end\n                    table.insert(ctx.messages, assistant_echo(message))",
+          "start_row": 2667,
+          "end_row": 2682
+        },
+        "lines": 4300,
+        "token_upper_bound_reserved": 336822,
+        "preview_visible": false,
+        "completed": true,
+        "outcome": "request failed: API error: {\n  code = \"context_length_exceeded\",\n  message = \"You exceeded the maximum context length for this model of 128000. Please reduce the length of the messages or completion.\",\n  param = \"messages\",\n  type = \"invalid_request_error\"\n}",
+        "prompt_bytes": 161412,
+        "elapsed_ms": 878.115018,
+        "copies": 4,
+        "variant": "full"
+      },
+      {
+        "name": "source-4300-lines_bounded",
+        "finish_reason": "stop",
+        "usage": {
+          "total_tokens": 7071,
+          "prompt_tokens": 6933,
+          "completion_tokens": 138,
+          "completion_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "prompt_tokens_details": {
+            "cached_tokens": 55
+          }
+        },
+        "preview_visible": true,
+        "cursor_row": 2672,
+        "started_at": "2026-10-27T07:50:50Z",
+        "exact_expected_edit": true,
+        "buffer_unchanged": false,
+        "outside_region_unchanged": true,
+        "region": {
+          "context_start_row": 2265,
+          "context_end_row": 3082,
+          "path": "tmp/mercury-context/mercury-edit-2_cap-32000_2026-10-27_07-50-47/fixture_4_bounded.lua",
+          "original": "                            ctx.last.result = queue and 'queued' or 'shown'\n                        end\n                        if not queue then\n                            internal.shown = ctx.last\n                        end\n                        local shown_memory = not queue and remember_shown(ctx.bufnr, patch) or nil\n                        clear_pending(ctx.state, ctx.seq)\n                        show_preview(ctx.bufnr, ctx.state, ctx.buf_lines, new_lines, ctx.changedtick, patch, {\n                            queue = queue,\n                            focus_kind = ctx.focus_kind,\n                            last = ctx.last,\n                            memory_entry = memory_entry,\n                        })\n                        return\n                    end\n                    table.insert(ctx.messages, assistant_echo(message))",
+          "start_row": 2667,
+          "end_row": 2682,
+          "max_prompt_bytes": 32000,
+          "prompt_bytes": 31999
+        },
+        "lines": 4300,
+        "token_upper_bound_reserved": 70956,
+        "completed": true,
+        "outcome": "preview shown",
+        "prompt_bytes": 31999,
+        "elapsed_ms": 1062.072559,
+        "copies": 4,
+        "variant": "bounded"
+      }
+    ],
+    "source": "lua/minuet/duet/init.lua",
+    "source_lines": 1075
+  },
+  "source_revision": "fdab8a81e5ca6c39f29c382f4e66aa680e6bd55d",
+  "source_sha256": "a553c9c4cb24bb8ad28b4d79cd1ff7e3a5e005b929d592d25090835b4898dfec",
+  "pricing_source": "https://docs.inceptionlabs.ai/get-started/models",
+  "uncached_input_usd_per_million": 0.25,
+  "output_usd_per_million": 0.75,
+  "requests": [
+    {
+      "case": "source-1075-lines_full",
+      "request_sha256": "feece7a23213e62b25994fc0d6f1f062a249b297450198fd27bfdcfda3d6be52",
+      "response": {
+        "id": "cmpl-a526781b-2506-40be-bd2f-28e78c8fcc65",
+        "object": "edit.completion",
+        "created": 1793087448,
+        "model": "mercury-edit-2",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "```\n                            ctx.last.result = queue and 'queued' or 'shown'\n                        end\n                        if not queue then\n                            internal.shown = ctx.last\n                        end\n                        local shown_memory = not queue and remember_shown(ctx.bufnr, patch) or nil\n                        clear_pending(ctx.state, ctx.seq)\n                        show_preview(ctx.bufnr, ctx.state, ctx.buf_lines, new_lines, ctx.changedtick, patch, {\n                            queue = queue,\n                            focus_kind = ctx.focus_kind,\n                            last = ctx.last,\n                            memory_entry = shown_memory,\n                        })\n                        return\n                    end\n                    table.insert(ctx.messages, assistant_echo(message))\n```"
+            },
+            "finish_reason": "stop"
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 9072,
+          "completion_tokens": 142,
+          "total_tokens": 9214,
+          "prompt_tokens_details": {
+            "cached_tokens": 9
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        },
+        "warning": null
+      }
+    },
+    {
+      "case": "source-1075-lines_bounded",
+      "request_sha256": "9e57706acfd1c43216ab68b0214a34d2fc9eb481bfc819334874963dee123d2d",
+      "response": {
+        "id": "cmpl-d99ec1f9-816e-41d2-b42a-765b7dea8a38",
+        "object": "edit.completion",
+        "created": 1793087449,
+        "model": "mercury-edit-2",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "```\n                            ctx.last.result = queue and 'queued' or 'shown'\n                        end\n                        if not queue then\n                            internal.shown = ctx.last\n                        end\n                        local shown_memory = not queue and remember_shown(ctx.bufnr, patch) or nil\n                        clear_pending(ctx.state, ctx.seq)\n                        show_preview(ctx.bufnr, ctx.state, ctx.buf_lines, new_lines, ctx.changedtick, patch, {\n                            queue = queue,\n                            focus_kind = ctx.focus_kind,\n                            last = ctx.last,\n                            memory_entry = shown_memory,\n                        })\n                        return\n                    end\n                    table.insert(ctx.messages, assistant_echo(message))\n```"
+            },
+            "finish_reason": "stop"
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 7018,
+          "completion_tokens": 140,
+          "total_tokens": 7158,
+          "prompt_tokens_details": {
+            "cached_tokens": 55
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        },
+        "warning": null
+      }
+    },
+    {
+      "case": "source-4300-lines_full",
+      "request_sha256": "54f74701a42c788086411909e8b0454b516327f6b5c370bcfbd66ca79d2a3a64",
+      "response": {
+        "error": {
+          "message": "You exceeded the maximum context length for this model of 128000. Please reduce the length of the messages or completion.",
+          "type": "invalid_request_error",
+          "param": "messages",
+          "code": "context_length_exceeded"
+        }
+      }
+    },
+    {
+      "case": "source-4300-lines_bounded",
+      "request_sha256": "e953782d702f800259a4ffd97e6a375c923a0a7a31e4b452b1b7f2022003ae59",
+      "response": {
+        "id": "cmpl-f5b3c666-a386-4b48-ae12-e29d3ebed98a",
+        "object": "edit.completion",
+        "created": 1793087451,
+        "model": "mercury-edit-2",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "```\n                            ctx.last.result = queue and 'queued' or 'shown'\n                        end\n                        if not queue then\n                            internal.shown = ctx.last\n                        end\n                        local shown_memory = not queue and remember_shown(ctx.bufnr, patch) or nil\n                        clear_pending(ctx.state, ctx.seq)\n                        show_preview(ctx.bufnr, ctx.state, ctx.buf_lines, new_lines, ctx.changedtick, patch, {\n                            queue = queue,\n                            focus_kind = ctx.focus_kind,\n                            last = ctx.last,\n                            memory_entry = shown_memory,\n                        })\n                        return\n                    end\n                    table.insert(ctx.messages, assistant_echo(message))\n```"
+            },
+            "finish_reason": "stop"
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 6933,
+          "completion_tokens": 138,
+          "total_tokens": 7071,
+          "prompt_tokens_details": {
+            "cached_tokens": 55
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        },
+        "warning": null
+      }
+    }
+  ]
+}

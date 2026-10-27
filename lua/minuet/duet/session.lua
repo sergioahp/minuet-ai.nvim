@@ -604,13 +604,14 @@ end
 
 --- Build the Mercury Edit 2 tagged prompt and describe the editable region it
 --- should return, following Inception's Next Edit format: cross-file snippets +
---- diagnostics + treesitter scope in recently_viewed_code_snippets, the full
---- current file with a cursor-centered (syntax-snapped) code_to_edit region, and
---- the chronological range-based edit_diff_history.
+--- diagnostics + treesitter scope in recently_viewed_code_snippets, local file
+--- context with a cursor-centered (syntax-snapped) code_to_edit region, and the
+--- chronological range-based edit_diff_history, all within one byte budget.
 ---@param bufnr integer
----@param opts? { lines_before?: integer, lines_after?: integer, max_editable_lines?: integer, snippet_count?: integer, snippet_radius?: integer, max_siblings?: integer }
----@return string prompt
----@return { path: string, start_row: integer, end_row: integer, original_lines: string[] } region
+---@param opts? { lines_before?: integer, lines_after?: integer, max_editable_lines?: integer, snippet_count?: integer, snippet_radius?: integer, max_siblings?: integer, max_prompt_bytes?: integer }
+---@return string? prompt
+---@return { path: string, start_row: integer, end_row: integer, original_lines: string[], context_start_row?: integer, context_end_row?: integer, prompt_bytes?: integer, max_prompt_bytes?: integer } region
+---@return string? error
 function M.build_inception_edit_turn(bufnr, opts)
     opts = opts or {}
     local state = M.get_state(bufnr)
@@ -638,10 +639,8 @@ function M.build_inception_edit_turn(bufnr, opts)
     start_row = math.max(1, start_row)
     end_row = math.min(#cur, end_row)
 
-    local pre = slice_lines(cur, 1, start_row - 1)
     local original_lines = slice_lines(cur, start_row, end_row)
     local editable = slice_lines(cur, start_row, end_row)
-    local post = slice_lines(cur, end_row + 1, #cur)
     local cursor_idx = row - start_row + 1
     editable[cursor_idx] = insert_cursor_marker(editable[cursor_idx] or '', col0)
 
@@ -653,67 +652,130 @@ function M.build_inception_edit_turn(bufnr, opts)
     vim.list_extend(entries, state.seed_diff_entries or {})
     vim.list_extend(entries, state.diff_entries or {})
 
-    local buf = {}
-    local function w(s)
-        buf[#buf + 1] = s
+    local region = {
+        path = path,
+        start_row = start_row,
+        end_row = end_row,
+        original_lines = original_lines,
+    }
+    local max_bytes = opts.max_prompt_bytes or 32000
+    if type(max_bytes) ~= 'number' or max_bytes < 1 or max_bytes >= math.huge or max_bytes ~= math.floor(max_bytes) then
+        return nil, region, 'inception_edit.max_prompt_bytes must be a positive integer'
+    end
+    region.max_prompt_bytes = max_bytes
+
+    local snippets_open = '<|recently_viewed_code_snippets|>\n'
+    local snippets_close = '<|/recently_viewed_code_snippets|>\n\n'
+    local file_open = '<|current_file_content|>\ncurrent_file_path: ' .. path .. '\n'
+    local edit_text = '<|code_to_edit|>\n' .. table.concat(editable, '\n') .. '\n<|/code_to_edit|>\n'
+    local file_close = '<|/current_file_content|>\n\n'
+    local history_open = '<|edit_diff_history|>\n'
+    local history_close = '<|/edit_diff_history|>\n'
+    local mandatory_bytes = #snippets_open
+        + #snippets_close
+        + #file_open
+        + #edit_text
+        + #file_close
+        + #history_open
+        + #history_close
+    if mandatory_bytes > max_bytes then
+        return nil,
+            region,
+            ('Mercury editable region needs %d prompt bytes, exceeding max_prompt_bytes=%d; reduce lines_before/lines_after or increase duet.provider_options.inception_edit.max_prompt_bytes'):format(
+                mandatory_bytes,
+                max_bytes
+            )
     end
 
-    w '<|recently_viewed_code_snippets|>\n'
-    for _, snip in ipairs(snippets) do
-        w '<|recently_viewed_code_snippet|>\n'
-        w('code_snippet_file_path: ' .. snip.path .. '\n')
-        w(table.concat(snip.lines, '\n') .. '\n')
-        w '<|/recently_viewed_code_snippet|>\n'
-    end
-    if diag_text ~= '' then
-        w '<|recently_viewed_code_snippet|>\n'
-        w 'code_snippet_file_path: diagnostics\n'
-        w(diag_text)
-        w '<|/recently_viewed_code_snippet|>\n'
-    end
-    if ts_text ~= '' then
-        w '<|recently_viewed_code_snippet|>\n'
-        w 'code_snippet_file_path: treesitter_context\n'
-        w(ts_text)
-        w '<|/recently_viewed_code_snippet|>\n'
-    end
-    w '<|/recently_viewed_code_snippets|>\n'
-    w '\n'
-
-    w '<|current_file_content|>\n'
-    w('current_file_path: ' .. path .. '\n')
-    for _, l in ipairs(pre) do
-        w(l .. '\n')
-    end
-    w '<|code_to_edit|>\n'
-    for _, l in ipairs(editable) do
-        w(l .. '\n')
-    end
-    w '<|/code_to_edit|>\n'
-    for _, l in ipairs(post) do
-        w(l .. '\n')
-    end
-    w '<|/current_file_content|>\n'
-    w '\n'
-
+    -- Reserve up to a quarter each for recent edits and supplemental snippets.
+    -- Local file context gets at least half and any unused reservations.
+    local remaining = max_bytes - mandatory_bytes
+    local history_limit = math.floor(remaining / 4)
+    local history_bytes = 0
+    local history_blocks = {}
     -- A/B knob: 'unified' renders a faithful diff (fewer un-deletes), 'synthetic'
     -- the compact range block (stronger multi-site propagation). See config.lua.
     local history_format = session_config().edit_history_format or 'synthetic'
-    w '<|edit_diff_history|>\n'
-    for _, e in ipairs(entries) do
-        local block = (history_format == 'unified' and e.unified) or M.render_diff_entry(e, path)
-        w(block .. '\n')
-        w '\n'
+    for i = #entries, 1, -1 do
+        local e = entries[i]
+        local block = ((history_format == 'unified' and e.unified) or M.render_diff_entry(e, path)) .. '\n\n'
+        if history_bytes + #block > history_limit then
+            break
+        end
+        table.insert(history_blocks, 1, block)
+        history_bytes = history_bytes + #block
     end
-    w '<|/edit_diff_history|>\n'
 
-    return table.concat(buf, ''),
-        {
-            path = path,
-            start_row = start_row,
-            end_row = end_row,
-            original_lines = original_lines,
-        }
+    local snippet_blocks = {}
+    for _, snip in ipairs(snippets) do
+        snippet_blocks[#snippet_blocks + 1] = '<|recently_viewed_code_snippet|>\ncode_snippet_file_path: '
+            .. snip.path
+            .. '\n'
+            .. table.concat(snip.lines, '\n')
+            .. '\n<|/recently_viewed_code_snippet|>\n'
+    end
+    if diag_text ~= '' then
+        snippet_blocks[#snippet_blocks + 1] = '<|recently_viewed_code_snippet|>\ncode_snippet_file_path: diagnostics\n'
+            .. diag_text
+            .. '<|/recently_viewed_code_snippet|>\n'
+    end
+    if ts_text ~= '' then
+        snippet_blocks[#snippet_blocks + 1] = '<|recently_viewed_code_snippet|>\ncode_snippet_file_path: treesitter_context\n'
+            .. ts_text
+            .. '<|/recently_viewed_code_snippet|>\n'
+    end
+    local selected_snippets = {}
+    local snippet_bytes = 0
+    for _, block in ipairs(snippet_blocks) do
+        if snippet_bytes + #block <= math.floor(remaining / 4) then
+            selected_snippets[#selected_snippets + 1] = block
+            snippet_bytes = snippet_bytes + #block
+        end
+    end
+
+    local context_start, context_end = start_row, end_row
+    remaining = remaining - history_bytes - snippet_bytes
+    local before_done, after_done = false, false
+    while not (before_done and after_done) do
+        -- Grow on both sides using complete lines. A giant adjacent line stops
+        -- that side, preserving a contiguous excerpt and valid UTF-8.
+        if not before_done then
+            local line = cur[context_start - 1]
+            if line and #line + 1 <= remaining then
+                context_start = context_start - 1
+                remaining = remaining - #line - 1
+            else
+                before_done = true
+            end
+        end
+        if not after_done then
+            local line = cur[context_end + 1]
+            if line and #line + 1 <= remaining then
+                context_end = context_end + 1
+                remaining = remaining - #line - 1
+            else
+                after_done = true
+            end
+        end
+    end
+
+    local pre = slice_lines(cur, context_start, start_row - 1)
+    local post = slice_lines(cur, end_row + 1, context_end)
+    local prompt = snippets_open
+        .. table.concat(selected_snippets)
+        .. snippets_close
+        .. file_open
+        .. (#pre > 0 and table.concat(pre, '\n') .. '\n' or '')
+        .. edit_text
+        .. (#post > 0 and table.concat(post, '\n') .. '\n' or '')
+        .. file_close
+        .. history_open
+        .. table.concat(history_blocks)
+        .. history_close
+    region.context_start_row = context_start
+    region.context_end_row = context_end
+    region.prompt_bytes = #prompt
+    return prompt, region
 end
 
 --- Build the user turn for a prediction: a cursor note, the recent edits (seed +

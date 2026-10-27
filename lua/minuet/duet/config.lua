@@ -196,11 +196,13 @@ local function make_inception_edit_options()
         -- Editable region: Inception recommends a small cursor-centered window
         -- ([cursor-5, cursor+10], ~100-150 tokens) since it dominates output
         -- latency, with ~25 lines a practical upper bound. The region snaps out
-        -- to enclosing syntax nodes while it fits in max_editable_lines; the full
-        -- file is still present outside the code_to_edit tags.
+        -- to enclosing syntax nodes while it fits in max_editable_lines; nearby
+        -- file context is present outside the code_to_edit tags.
         lines_before = 5,
         lines_after = 10,
         max_editable_lines = 25,
+        -- Complete tagged prompt budget in bytes, not model tokens.
+        max_prompt_bytes = 32000,
         -- recently_viewed_code_snippets: up to snippet_count cross-file excerpts
         -- of ~snippet_radius*2 lines around recent cursor rows, plus diagnostics
         -- and treesitter scope (max_siblings sibling signatures).

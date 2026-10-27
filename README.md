@@ -1524,6 +1524,19 @@ The Minuet duet command provides manual next-edit prediction controls:
   often, at the cost of slightly weaker multi-site propagation. Mirrors the
   `duet.session.edit_history_format` config option.
 
+Mercury Edit bounds its complete tagged prompt with
+`duet.provider_options.inception_edit.max_prompt_bytes` (default `32000`). This
+counts UTF-8 bytes, not model tokens or the JSON request envelope; it is a
+conservative size bound, not an exact token count. The editable region and cursor
+always remain intact. Nearby file context uses whole lines, recent edit history
+uses a chronological suffix of complete entries, and cross-file snippets,
+diagnostics, and syntax context share the same budget as complete blocks. History
+and supplemental blocks each receive up to a quarter of the space left after the
+editable region; nearby file context receives the rest, including unused space.
+If the editable region alone exceeds the budget, the request stops locally with
+an error suggesting a smaller `lines_before`/`lines_after` window or a larger
+`max_prompt_bytes`. Returned edits still target the original buffer rows.
+
 ## `Minuet lsp`
 
 The Minuet LSP command provides commands for managing the in-process LSP server:

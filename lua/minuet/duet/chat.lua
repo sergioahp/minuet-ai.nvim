@@ -73,14 +73,28 @@ local function request_inception_edit(opts, callback, ctx)
 
     local root = require('minuet').config
     local duet = root.duet
-    local prompt, region = session.build_inception_edit_turn(ctx.bufnr, {
+    local prompt, region, prompt_error = session.build_inception_edit_turn(ctx.bufnr, {
         lines_before = opts.lines_before,
         lines_after = opts.lines_after,
         max_editable_lines = opts.max_editable_lines,
+        max_prompt_bytes = opts.max_prompt_bytes,
         snippet_count = opts.snippet_count,
         snippet_radius = opts.snippet_radius,
         max_siblings = opts.max_siblings,
     })
+    if prompt_error then
+        callback {
+            error = prompt_error,
+            inspect = {
+                kind = 'inception_edit',
+                provider = duet.provider,
+                model = opts.model,
+                outcome = 'request setup failed',
+                error = prompt_error,
+            },
+        }
+        return
+    end
     local body = {
         model = opts.model,
         messages = { { role = 'user', content = prompt } },
@@ -105,6 +119,10 @@ local function request_inception_edit(opts, callback, ctx)
             start_row = region.start_row,
             end_row = region.end_row,
             original = table.concat(region.original_lines or {}, '\n'),
+            context_start_row = region.context_start_row,
+            context_end_row = region.context_end_row,
+            prompt_bytes = region.prompt_bytes,
+            max_prompt_bytes = region.max_prompt_bytes,
         },
         outcome = 'pending',
     }

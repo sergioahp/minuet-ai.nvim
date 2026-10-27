@@ -532,8 +532,10 @@ local function derive_suggestions(ctx, params, cur_before, cur_after, cur_incomp
             -- A streamed lock may contain only the partial available when its
             -- visible lines first became final. Once the matching cache group
             -- has the settled completion, advance the lock to that full group
-            -- representative without changing the visible choice.
-            if lock.completion ~= results[found] then
+            -- representative without changing the visible choice. Comparing
+            -- the remainder keeps ordinary typing from moving the lock anchor,
+            -- so backspacing can still recover the original choice.
+            if pinned ~= results[found] then
                 lock.completion = results[found]
                 lock.lines_before = cur_before
                 lock.lines_after = cur_after
@@ -875,12 +877,14 @@ end
 --- cache pool (suffix agreement, typed-since head match) to a single completion,
 --- which is what lets a streamed partial be painted while the user keeps typing.
 ---@param cfg table effective config
+---@param ctx minuet.VirtualtextSuggestionContext
+---@param params table completion family
 ---@param req_before string before-cursor text the completion was requested at
 ---@param req_after string after-cursor text the completion was requested at
 ---@param text string
 ---@return string? remainder, table? context live context used to derive it
-local function live_remainder(cfg, req_before, req_after, text)
-    local ctx_now = vt_get_context(utils.make_cmp_context(), cfg)
+local function live_remainder(cfg, ctx, params, req_before, req_after, text)
+    local ctx_now = resolve_context(utils.make_cmp_context(), cfg, ctx, params)
     if not suffix_compatible(req_after, ctx_now.lines_after) then
         return nil
     end
@@ -1173,7 +1177,7 @@ local function trigger(bufnr, overrides, is_retry, is_manual, extend)
             end
             text = truncate_at_stop_tokens(text, params.stop_tokens)
             -- The user may have typed while the stream is in flight.
-            local remainder, live_context = live_remainder(cfg, cur_before, cur_after, text)
+            local remainder, live_context = live_remainder(cfg, ctx, params, cur_before, cur_after, text)
             -- Paint only once the visible portion is final, i.e. the stream has
             -- produced at least one display line beyond the cut.
             if not remainder or not display_cut(vim.split(remainder, '\n', { plain = true }), display_max_lines) then
@@ -1209,7 +1213,7 @@ local function trigger(bufnr, overrides, is_retry, is_manual, extend)
                 return
             end
             text = truncate_at_stop_tokens(text, params.stop_tokens)
-            local remainder = live_remainder(cfg, cur_before, cur_after, extend .. text)
+            local remainder = live_remainder(cfg, ctx, params, cur_before, cur_after, extend .. text)
             if not remainder then
                 return
             end
@@ -1283,7 +1287,7 @@ local function trigger(bufnr, overrides, is_retry, is_manual, extend)
         -- Re-read cursor position so we don't flash stale ghost-text when the
         -- user typed ahead while the request was in flight.
         local cmp_ctx_now = utils.make_cmp_context()
-        local ctx_now = vt_get_context(cmp_ctx_now, cfg)
+        local ctx_now = resolve_context(cmp_ctx_now, cfg, ctx, params)
         local effective, effective_choice, n_fresh_now = derive_suggestions(
             ctx,
             params,

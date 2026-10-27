@@ -568,6 +568,81 @@ return {
         end,
     },
     {
+        name = 'virtualtext matching space preserves a cycled choice after an anchored response',
+        run = function()
+            for _, streaming in ipairs { false, true } do
+                helpers.setup_root_config {
+                    provider = 'test',
+                    debounce = 0,
+                    throttle = 0,
+                    n_completions = 3,
+                    virtualtext = {
+                        max_retries = 0,
+                        max_display_lines = 1,
+                        context_before_chars = 20,
+                        context_after_chars = 20,
+                        context_growth_slack = 100,
+                    },
+                    provider_options = {
+                        test = { model = 'fixture-model', optional = {} },
+                    },
+                }
+
+                local pending_callback
+                local on_stream_partial
+                package.loaded['minuet.backends.test'] = {
+                    complete = function(context, callback)
+                        pending_callback = callback
+                        on_stream_partial = context.opts.on_stream_partial
+                    end,
+                }
+
+                local virtualtext = helpers.reload 'minuet.virtualtext'
+                virtualtext.setup()
+                local prefix = string.rep('0123456789', 10)
+                local bufnr = helpers.create_buffer({ prefix .. 'SUFFIX' }, { 1, #prefix })
+                local original_mode = vim.fn.mode
+                vim.fn.mode = function()
+                    return 'i'
+                end
+
+                -- Establish a request anchor, then grow it before the response
+                -- that supplies the choice. Its live prefix exceeds the fresh
+                -- context window, as it does during typing in a long document.
+                virtualtext.action.fire()
+                pending_callback {}
+                vim.api.nvim_buf_set_text(bufnr, 0, #prefix, 0, #prefix, { 's' })
+                vim.api.nvim_win_set_cursor(0, { 1, #prefix + 1 })
+                virtualtext.action.fire()
+                if streaming then
+                    on_stream_partial ' to the\nhidden tail'
+                end
+                pending_callback { ' to the', ' to $N$ improves', ' something else' }
+                virtualtext.action.next()
+                helpers.expect_match(get_suggestion_text(bufnr, virtualtext.ns_id), '^ to %$N%$ improves')
+
+                vim.api.nvim_buf_set_text(bufnr, 0, #prefix + 1, 0, #prefix + 1, { ' ' })
+                vim.api.nvim_win_set_cursor(0, { 1, #prefix + 2 })
+                vim.api.nvim_exec_autocmds('CursorMovedI', { buffer = bufnr })
+                helpers.expect_match(
+                    get_suggestion_text(bufnr, virtualtext.ns_id),
+                    '^to %$N%$ improves',
+                    'typing a matching space must preserve the selected completion'
+                )
+
+                -- Returning to the original state must retain the choice too.
+                vim.api.nvim_buf_set_text(bufnr, 0, #prefix + 1, 0, #prefix + 2, { '' })
+                vim.api.nvim_win_set_cursor(0, { 1, #prefix + 1 })
+                vim.api.nvim_exec_autocmds('CursorMovedI', { buffer = bufnr })
+                helpers.expect_match(get_suggestion_text(bufnr, virtualtext.ns_id), '^ to %$N%$ improves')
+
+                virtualtext.action.dismiss()
+                vim.fn.mode = original_mode
+                helpers.delete_buffer(bufnr)
+            end
+        end,
+    },
+    {
         name = 'virtualtext hand typing uses the anchored cache at EOF',
         run = function()
             helpers.setup_root_config {

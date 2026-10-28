@@ -503,6 +503,10 @@ local M = {
     -- to the codestral provider on FIM only; set false to disable. See
     -- scripts/probe_codestral_*newline*.py for the analysis.
     codestral_strip_spurious_newline = true,
+    -- Trim an exact completion ending that repeats the start of the text after
+    -- the cursor, only when the match contains an ASCII identifier of at least
+    -- four characters. Short identifiers, numbers and punctuation alone stay.
+    codestral_trim_suffix_overlap = true,
     proxy = nil,
 }
 

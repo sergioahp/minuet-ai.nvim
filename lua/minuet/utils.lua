@@ -621,7 +621,8 @@ function M.get_context(cmp_context, cfg, anchor)
             lines_before = vim.fn.strcharpart(lines_before, n_chars_before + n_chars_after - config.context_window)
             opts.is_incomplete_before = true
         else
-            lines_after = vim.fn.strcharpart(lines_after, 0, math.floor(config.context_window * (1 - config.context_ratio)))
+            lines_after =
+                vim.fn.strcharpart(lines_after, 0, math.floor(config.context_window * (1 - config.context_ratio)))
             lines_before = vim.fn.strcharpart(
                 lines_before,
                 n_chars_before - math.floor(config.context_window * config.context_ratio)
@@ -825,6 +826,23 @@ function M.find_longest_match(a, b)
 
     -- If the loop completes without finding any match, return an empty string.
     return ''
+end
+
+--- Trim only the longest exact boundary overlap, preserving all other bytes.
+--- Requiring a four-character ASCII identifier protects repeated delimiters
+--- and numeric literals, which can legitimately occur on both sides of a gap.
+---@param text string?
+---@param suffix string? Original buffer context after the request cursor
+---@return string?
+function M.trim_codestral_suffix_overlap(text, suffix)
+    if type(text) ~= 'string' then
+        return text
+    end
+    local overlap = M.find_longest_match(suffix, text)
+    if overlap:find '[A-Za-z_][A-Za-z0-9_][A-Za-z0-9_][A-Za-z0-9_]' then
+        return text:sub(1, #text - #overlap)
+    end
+    return text
 end
 
 --- If the last word of b is not a substring of the first word of a,

@@ -34,6 +34,7 @@ M.complete = function(context, callback, cfg)
     -- Gate the spurious-leading-newline fix to codestral; the shared FIM base
     -- only strips when this flag is set, so other FIM providers are unaffected.
     options.strip_spurious_leading_newline = config.codestral_strip_spurious_newline ~= false
+    options.trim_suffix_overlap = config.codestral_trim_suffix_overlap ~= false
 
     local get_text_fn = options.stream and M.get_text_fn_stream or M.get_text_fn_no_stream
 

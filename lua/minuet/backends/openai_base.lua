@@ -44,7 +44,9 @@ local function prepare_fim_items(items, context, cfg)
     if cfg.fim_filter_context then
         filtered_items = common.filter_context_sequences_in_items(items, context, cfg)
     end
-    return vim.tbl_filter(function(x) return type(x) == 'string' and x:find '%S' end, filtered_items)
+    return vim.tbl_filter(function(x)
+        return type(x) == 'string' and x:find '%S'
+    end, filtered_items)
 end
 
 ---@param options table
@@ -315,6 +317,9 @@ function M.complete_openai_fim_base(options, get_text_fn, context, callback, cfg
                 if options.strip_spurious_leading_newline then
                     text = utils.strip_codestral_spurious_newline(text, data.prompt, data.suffix)
                 end
+                if options.trim_suffix_overlap then
+                    text = utils.trim_codestral_suffix_overlap(text, context_after_cursor)
+                end
                 if text and #text > 0 then
                     on_partial(text)
                 end
@@ -385,6 +390,10 @@ function M.complete_openai_fim_base(options, get_text_fn, context, callback, cfg
                 -- the first line.
                 if result and (context.opts or {}).trim_incomplete_tail_line and hit_token_limit(out.stdout) then
                     result = result:match '^(.*)\n[^\n]*$'
+                end
+
+                if options.trim_suffix_overlap then
+                    result = utils.trim_codestral_suffix_overlap(result, context_after_cursor)
                 end
 
                 finish_request(idx, result)

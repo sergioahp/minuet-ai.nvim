@@ -872,6 +872,15 @@ default_config = {
     -- returns nothing). Applies to the codestral provider on FIM only; set false
     -- to disable.
     codestral_strip_spurious_newline = true,
+    -- Codestral-only: trim the longest exact overlap between a completion's
+    -- ending and the beginning of the buffer text after the cursor, but only
+    -- if the overlap contains an ASCII identifier of at least four characters
+    -- (letter or underscore, followed by letters, digits or underscores).
+    -- Numbers, short identifiers and punctuation alone are not trimmed.
+    -- Applies to streamed previews and completed responses without normalizing
+    -- whitespace. This checks the ending, not copied text inside a completion.
+    -- Independent of fim_filter_context; set false to disable.
+    codestral_trim_suffix_overlap = true,
     -- proxy port to use
     proxy = nil,
     -- **List** of functions to execute. If any function returns `false`, Minuet

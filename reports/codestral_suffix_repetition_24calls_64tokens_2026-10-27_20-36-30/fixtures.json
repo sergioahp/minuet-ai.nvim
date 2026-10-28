@@ -1,0 +1,50 @@
+[
+  {
+    "id": "tex_expression",
+    "source": "https://www.overleaf.com/learn/latex/Mathematical_expressions",
+    "prefix": "% language: tex\n% indentation: use 2 spaces for a tab\nThe well known Pythagorean theorem \\(x^2 + ",
+    "suffix": " = z^2\\) was\nproved to be invalid for other exponents.\n"
+  },
+  {
+    "id": "tex_rhs",
+    "source": "https://www.overleaf.com/learn/latex/Mathematical_expressions",
+    "prefix": "% language: tex\n% indentation: use 2 spaces for a tab\nThe well known Pythagorean theorem \\(x^2 + y^2 = ",
+    "suffix": "\\) was\nproved to be invalid for other exponents.\n"
+  },
+  {
+    "id": "tex_operator",
+    "source": "https://www.overleaf.com/learn/latex/Mathematical_expressions",
+    "prefix": "% language: tex\n% indentation: use 2 spaces for a tab\nMeaning the next equation has no integer solutions:\n\n\\[ x^n ",
+    "suffix": " + y^n = z^n \\]\n\n\\end{document}\n"
+  },
+  {
+    "id": "tex_delimiter",
+    "source": "https://www.overleaf.com/learn/latex/Mathematical_expressions",
+    "prefix": "% language: tex\n% indentation: use 2 spaces for a tab\nMeaning the next equation has no integer solutions:\n\n\\[ x^n + y^n = ",
+    "suffix": " \\]\n\n\\end{document}\n"
+  },
+  {
+    "id": "tex_newline",
+    "source": "https://www.overleaf.com/learn/latex/Mathematical_expressions",
+    "prefix": "% language: tex\n% indentation: use 2 spaces for a tab\nThe well known Pythagorean theorem \\(x^2 + y^2 = z^2\\) was\n",
+    "suffix": "\nMeaning the next equation has no integer solutions:\n\n\\[ x^n + y^n = z^n \\]\n"
+  },
+  {
+    "id": "lua_expression",
+    "source": "lua/minuet/config.lua at f387527",
+    "prefix": "-- language: lua\n-- indentation: use 4 spaces for a tab\nlocal default_fim_prompt = function(context_before_cursor, _, _)\n    local utils = require ",
+    "suffix": "\n    local language = utils.add_language_comment()\n    local tab = utils.add_tab_comment()\n"
+  },
+  {
+    "id": "lua_operator",
+    "source": "lua/minuet/config.lua at f387527",
+    "prefix": "-- language: lua\n-- indentation: use 4 spaces for a tab\nlocal default_fim_prompt = function(context_before_cursor, _, _)\n    local utils = require 'minuet.utils'\n    local language = utils.add_language_comment()\n    local tab = utils.add_tab_comment()\n    context_before_cursor = language .. ",
+    "suffix": " .. tab .. '\\n' .. context_before_cursor\n\n    return context_before_cursor\nend\n"
+  },
+  {
+    "id": "lua_newline",
+    "source": "lua/minuet/config.lua at f387527",
+    "prefix": "-- language: lua\n-- indentation: use 4 spaces for a tab\nlocal default_fim_suffix = function(_, context_after_cursor, _)\n",
+    "suffix": "\nend\n\n---@class minuet.ChatInputExtraInfo\n"
+  }
+]

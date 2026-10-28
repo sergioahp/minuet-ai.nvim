@@ -1,0 +1,1466 @@
+{
+  "created_utc": "2026-10-28T02:41:06.305+00:00",
+  "endpoint": "https://codestral.mistral.ai/v1/fim/completions",
+  "model": "codestral-latest",
+  "maximum_output_tokens": 64,
+  "repeats": 9,
+  "seed": 20261027,
+  "conditions": [
+    "original",
+    "empty",
+    "newline",
+    "changed"
+  ],
+  "schedule": [
+    {
+      "fixture": "tex_operator",
+      "repetition": 2,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 8,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 3,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 4,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 3,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 6,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 5,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 1,
+      "condition": "original"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 4,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 8,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 8,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 4,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 1,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 7,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 9,
+      "condition": "empty"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 7,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 8,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 4,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 2,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 4,
+      "condition": "original"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 9,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 9,
+      "condition": "original"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 7,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 7,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 4,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 9,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 9,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 2,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 5,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 8,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 6,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 2,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 6,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 3,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 9,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 2,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 1,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 4,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 4,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 8,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 4,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 1,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 1,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 9,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 9,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 9,
+      "condition": "original"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 6,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 4,
+      "condition": "empty"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 6,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 5,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 4,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 9,
+      "condition": "empty"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 4,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 5,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 6,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 9,
+      "condition": "original"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 3,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 9,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 7,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 4,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 8,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 6,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 9,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 5,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 1,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 1,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 2,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 5,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 2,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 1,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 8,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 4,
+      "condition": "original"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 6,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 5,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 4,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 1,
+      "condition": "original"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 9,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 4,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 3,
+      "condition": "original"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 6,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 4,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 3,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 7,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 5,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 1,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 2,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 7,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 2,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 7,
+      "condition": "original"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 1,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 1,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 6,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 7,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 4,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 1,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 6,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 5,
+      "condition": "empty"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 9,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 7,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 2,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 9,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 8,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 3,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 9,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 3,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 7,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 1,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 8,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 9,
+      "condition": "empty"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 8,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 6,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 2,
+      "condition": "original"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 1,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 1,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 2,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 3,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 2,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 4,
+      "condition": "empty"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 1,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 5,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 4,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 3,
+      "condition": "empty"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 5,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 9,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 8,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 8,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 3,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 3,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 7,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 3,
+      "condition": "original"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 5,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 6,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 6,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 7,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 8,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 3,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 9,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 9,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 2,
+      "condition": "empty"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 2,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 2,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 5,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 1,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 9,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 2,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 7,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 7,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 3,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 2,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 6,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 1,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 7,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 3,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 8,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 9,
+      "condition": "original"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 6,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 6,
+      "condition": "empty"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 8,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 1,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 1,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 7,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 5,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 9,
+      "condition": "original"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 4,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 3,
+      "condition": "original"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 3,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 9,
+      "condition": "empty"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 1,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 9,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 6,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 6,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 4,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 7,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 3,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 5,
+      "condition": "original"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 8,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 5,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 8,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 8,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 7,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 6,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 9,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 2,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 6,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 5,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 8,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 8,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 5,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 7,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 7,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 2,
+      "condition": "original"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 6,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 5,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 2,
+      "condition": "empty"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 4,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 1,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 2,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 7,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 5,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 5,
+      "condition": "empty"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 7,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 8,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 1,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 5,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 2,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 7,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 3,
+      "condition": "original"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 3,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 7,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 5,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 9,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 2,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 1,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 2,
+      "condition": "original"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 5,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 3,
+      "condition": "empty"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 8,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 4,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 3,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 7,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 3,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 8,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 6,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 8,
+      "condition": "empty"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 8,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 6,
+      "condition": "original"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 6,
+      "condition": "original"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 5,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 5,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 4,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 1,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 8,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 6,
+      "condition": "empty"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 3,
+      "condition": "empty"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 5,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 3,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 4,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 7,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 5,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 2,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 3,
+      "condition": "empty"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 1,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 3,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 2,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 6,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 5,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 6,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 5,
+      "condition": "original"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 9,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 9,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 3,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 8,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 8,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 2,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 6,
+      "condition": "original"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 2,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 1,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 2,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 6,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 6,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 5,
+      "condition": "original"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 9,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 7,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 6,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 8,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 4,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 3,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_rhs",
+      "repetition": 7,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 5,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 4,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 8,
+      "condition": "empty"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 4,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 7,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_operator",
+      "repetition": 2,
+      "condition": "original"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 1,
+      "condition": "original"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 9,
+      "condition": "original"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 7,
+      "condition": "changed"
+    },
+    {
+      "fixture": "lua_newline",
+      "repetition": 8,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 1,
+      "condition": "newline"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 1,
+      "condition": "empty"
+    },
+    {
+      "fixture": "lua_expression",
+      "repetition": 4,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 2,
+      "condition": "changed"
+    },
+    {
+      "fixture": "tex_newline",
+      "repetition": 7,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 4,
+      "condition": "original"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 4,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_expression",
+      "repetition": 3,
+      "condition": "newline"
+    },
+    {
+      "fixture": "lua_operator",
+      "repetition": 1,
+      "condition": "empty"
+    },
+    {
+      "fixture": "tex_delimiter",
+      "repetition": 3,
+      "condition": "newline"
+    }
+  ],
+  "no_retry": true,
+  "input_reserve_tokens_per_request": 2048,
+  "output_reserve_tokens_per_request": 64,
+  "published_input_usd_per_million": 0.3,
+  "published_output_usd_per_million": 0.9,
+  "reservation_input_usd_per_million": 1.0,
+  "reservation_output_usd_per_million": 3.0,
+  "preflight_reservation_usd": 0.64512,
+  "spend_limit_usd": 1.5,
+  "pricing_url": "https://docs.mistral.ai/inference/pricing"
+}

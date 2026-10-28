@@ -1,0 +1,8 @@
+{
+  "model": "codestral-latest",
+  "prompt": "-- language: lua\n-- indentation: use 4 spaces for a tab\nlocal default_fim_suffix = function(_, context_after_cursor, _)\n",
+  "suffix": "",
+  "max_tokens": 64,
+  "temperature": 0,
+  "stream": false
+}

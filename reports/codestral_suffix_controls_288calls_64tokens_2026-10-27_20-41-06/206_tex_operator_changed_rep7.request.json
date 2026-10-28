@@ -1,0 +1,8 @@
+{
+  "model": "codestral-latest",
+  "prompt": "% language: tex\n% indentation: use 2 spaces for a tab\nMeaning the next equation has no integer solutions:\n\n\\[ x^n ",
+  "suffix": " - y^n = w^n \\]\n\n\\end{document}\n",
+  "max_tokens": 64,
+  "temperature": 0,
+  "stream": false
+}

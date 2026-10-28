@@ -1,0 +1,8 @@
+{
+  "model": "codestral-latest",
+  "prompt": "% language: tex\n% indentation: use 2 spaces for a tab\nThe well known Pythagorean theorem \\(x^2 + y^2 = z^2\\) was\n",
+  "suffix": "\n",
+  "max_tokens": 64,
+  "temperature": 0,
+  "stream": false
+}

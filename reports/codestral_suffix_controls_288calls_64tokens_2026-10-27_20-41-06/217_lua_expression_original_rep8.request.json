@@ -1,0 +1,8 @@
+{
+  "model": "codestral-latest",
+  "prompt": "-- language: lua\n-- indentation: use 4 spaces for a tab\nlocal default_fim_prompt = function(context_before_cursor, _, _)\n    local utils = require ",
+  "suffix": "\n    local language = utils.add_language_comment()\n    local tab = utils.add_tab_comment()\n",
+  "max_tokens": 64,
+  "temperature": 0,
+  "stream": false
+}

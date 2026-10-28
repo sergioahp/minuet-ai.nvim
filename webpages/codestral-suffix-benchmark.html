@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Does the text after the cursor cause repetition? | Codestral benchmark</title>
+<style>
+:root{color-scheme:light;--ink:#182c35;--muted:#52666c;--paper:#f7f6f0;--white:#fff;--teal:#126d68;--teal-light:#dcefeb;--orange:#b65732;--line:#d8e0dc;--navy:#173b45}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.65 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+a{color:#075e5b;text-underline-offset:3px}
+a:focus-visible,summary:focus-visible{outline:3px solid #d6814d;outline-offset:4px}
+.wrap{width:min(1080px,calc(100% - 40px));margin:auto}
+.hero{background:var(--navy);color:#fff;padding:64px 0 70px}
+.eyebrow{font-size:.75rem;font-weight:750;letter-spacing:.16em;text-transform:uppercase;color:#a5dbcf}
+.hero h1{font-size:clamp(2.3rem,5vw,4.2rem);line-height:1.05;letter-spacing:-.045em;max-width:850px;margin:14px 0 22px}
+.hero p{max-width:750px;font-size:1.16rem;color:#dcece8;margin:0}
+.hero strong{color:#fff}
+.hero-links{margin-top:25px;display:flex;gap:22px;flex-wrap:wrap}
+.hero-links a{color:#c7eee5;font-weight:650}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#bbd4ce;border:1px solid #bbd4ce;border-radius:12px;overflow:hidden;margin-top:-27px;position:relative;box-shadow:0 10px 28px #183b4510}
+.stat{background:#fff;padding:19px 24px}
+.stat b{display:block;font-size:1.45rem;line-height:1.2;color:var(--teal)}
+.stat span{font-size:.88rem;color:var(--muted)}
+section{padding:56px 0;border-bottom:1px solid var(--line)}
+h2{font-size:clamp(1.8rem,3vw,2.45rem);line-height:1.15;letter-spacing:-.03em;margin:0 0 16px}
+h3{line-height:1.25;margin:0 0 10px}
+p{margin:0 0 16px}
+.lead{font-size:1.12rem;max-width:760px;color:#344c52}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.card{background:var(--white);border:1px solid var(--line);border-radius:14px;padding:25px}
+.diagram{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;margin:20px 0}
+.piece{flex:1 1 140px;border-radius:9px;background:#e9eeeb;padding:12px 14px;font-size:.9rem}
+.piece b{display:block;color:var(--ink)}
+.piece.insert{background:#fce9db}
+.piece.after{background:var(--teal-light)}
+.small{font-size:.9rem;color:var(--muted)}
+.conditions{padding-left:20px;margin:0}
+.conditions li{padding:3px 0}
+.chart{margin-top:24px}
+.bar-row{display:grid;grid-template-columns:100px 1fr 95px;align-items:center;gap:14px;margin:14px 0;font-size:.94rem}
+.track{height:18px;background:#e8efec;border-radius:20px;overflow:hidden}
+.bar{height:100%;background:#2a8a80;border-radius:20px}
+.bar.changed{background:#c47953}
+.value{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+.axis{display:flex;justify-content:space-between;margin:0 109px 0 114px;font-size:.75rem;color:var(--muted)}
+.callout{border-left:4px solid #d17b4e;background:#fff4e9;padding:18px 22px;border-radius:0 10px 10px 0;margin-top:24px}
+.callout p:last-child,.card p:last-child{margin-bottom:0}
+.examples{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:24px}
+.example{background:#fff;border:1px solid var(--line);border-radius:12px;padding:22px}
+.example .tag{color:var(--teal);font-weight:750;font-size:.76rem;text-transform:uppercase;letter-spacing:.08em}
+.example h3{margin:8px 0}
+.example p{font-size:.93rem;color:#40575d;margin:0}
+.limits{background:#e8f0ec;border-radius:14px;padding:26px 30px;margin-top:24px}
+.limits ul{margin:0;padding-left:20px}
+.limits li{margin:8px 0}
+details{background:#fff;border:1px solid var(--line);border-radius:12px;margin-top:22px}
+summary{cursor:pointer;padding:20px 24px;font-weight:750;color:#155e5b}
+details[open] summary{border-bottom:1px solid var(--line)}
+.details-body{padding:22px 24px}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.9rem;white-space:nowrap}
+th,td{padding:10px 12px;border-bottom:1px solid #e6ebe8;text-align:right;font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left}
+th{font-size:.8rem;color:var(--muted)}
+code{font-size:.9em;background:#edf2ef;padding:2px 4px;border-radius:4px}
+.sources{display:flex;gap:12px 24px;flex-wrap:wrap}
+footer{padding:30px 0 45px;color:var(--muted);font-size:.87rem}
+ @media (max-width: 700px) {
+.hero{padding:46px 0 60px}
+.stats{grid-template-columns:1fr}
+.stat{padding:13px 18px}
+.grid,.examples{grid-template-columns:1fr}
+.bar-row{grid-template-columns:75px 1fr 75px;gap:8px;font-size:.85rem}
+.axis{margin-left:83px;margin-right:83px}
+section{padding:42px 0}
+.card,.details-body{padding:19px}
+}
+</style>
+</head>
+<body>
+<header class="hero"><div class="wrap">
+  <div class="eyebrow">Codestral / completion experiment / October 2026</div>
+  <h1>Does text after the cursor cause repetition?</h1>
+  <p><strong>Not consistently in this test.</strong> Codestral sometimes generated text already after the cursor, but it did so at similar overall rates when that text was removed. The text after the cursor could still steer what it wrote.</p>
+  <div class="hero-links"><a href="#results">See the comparison &darr;</a><a href="../reports/codestral_suffix_controls_288calls_64tokens_2026-10-27_20-41-06/REPORT.md">Read the full report &rarr;</a></div>
+</div></header>
+<main class="wrap">
+  <div class="stats" aria-label="Benchmark at a glance"><div class="stat"><b>288 calls</b><span>72 for each condition</span></div><div class="stat"><b>8 cursor positions</b><span>9 repeats per condition</span></div><div class="stat"><b>About $0.017</b><span>estimated API usage cost</span></div></div>
+  <section><div class="grid"><div><div class="eyebrow" style="color:#18756e">01 / The setup</div><h2>A completion in the middle</h2><p class="lead">The model was asked to fill in text at a cursor position, with text before it and, sometimes, text after it.</p><div class="diagram" aria-label="The model sees text before the cursor, fills an insertion, and may see text after the cursor"><div class="piece"><b>Before</b>Text leading up to the cursor</div><div class="piece insert"><b>Insertion</b>What the model generates</div><div class="piece after"><b>After</b>The supplied suffix</div></div><p class="small">A <strong>suffix</strong> is the text supplied to the model as the text after the cursor. A <strong>fixture</strong> is one fixed example and cursor position.</p></div><div class="card"><h3>Four versions of the text after</h3><p>For each of eight selected Lua and TeX examples, the benchmark tried:</p><ul class="conditions"><li><strong>Original:</strong> the actual following text</li><li><strong>Empty:</strong> no following text</li><li><strong>Newline:</strong> just a line break</li><li><strong>Changed:</strong> a plausible alternative following text</li></ul><p class="small" style="margin-top:16px">Each combination was called nine times. All 288 calls succeeded, using Codestral's fill-in-the-middle endpoint with a 64-token output cap.</p></div></div></section>
+  <section id="results"><div class="eyebrow" style="color:#18756e">02 / The comparison</div><h2>Similar overlap, with or without the original suffix</h2><p class="lead">The test counted completions containing a run of at least 12 characters also found in the <em>original</em> following text, after collapsing whitespace. The match could appear anywhere in the completion.</p>
+  <div class="card chart"><h3>Completions with 12+ characters of overlap</h3><p class="small">Each bar represents 72 calls. All four are compared with the original following text, including the changed condition.</p><div class="bar-row"><span>Original</span><div class="track"><div class="bar" style="width:43.1%"></div></div><span class="value">31 / 72</span></div><div class="bar-row"><span>Empty</span><div class="track"><div class="bar" style="width:44.4%"></div></div><span class="value">32 / 72</span></div><div class="bar-row"><span>Newline</span><div class="track"><div class="bar" style="width:41.7%"></div></div><span class="value">30 / 72</span></div><div class="bar-row"><span>Changed</span><div class="track"><div class="bar changed" style="width:26.4%"></div></div><span class="value">19 / 72</span></div><div class="axis"><span>0%</span><span>50%</span><span>100%</span></div></div>
+  <div class="callout"><p><strong>Overlap is a clue, not a verdict.</strong> Common syntax or a natural equation ending can appear even when the model never saw the following text. A match does not establish that an edit would be wrong; shorter repetitions can also fall below the 12-character cutoff.</p></div></section>
+  <section><div class="eyebrow" style="color:#18756e">03 / What the examples reveal</div><h2>The suffix can steer the answer</h2><p class="lead">The aggregate hides different behaviors. In one example, changing the following text changed the tail the model generated; in another, the same ending appeared even without any suffix.</p><div class="examples"><article class="example"><div class="tag">TeX operator</div><h3>A changed ending was followed</h3><p>All 9 changed-suffix completions emitted its alternative operator and equation tail. The original tail also appeared in all 9 empty-suffix calls, so it could be prompted by the text before the cursor alone.</p></article><article class="example"><div class="tag">TeX expression</div><h3>A natural ending appeared everywhere</h3><p>All 9 completions in each condition supplied the same diagnostic equation ending. Its appearance here cannot be attributed to the original suffix.</p></article><article class="example"><div class="tag">Lua newline</div><h3>Some existing text reappeared</h3><p>7 of 9 original-suffix completions reached the start of a later class annotation; none did so under the empty or newline conditions. The match was only a partial annotation.</p></article></div>
+  <details><summary>Explore all eight fixtures and their overlap counts</summary><div class="details-body"><p>Each cell is the number of completions, out of nine, with a 12-character or longer match to the original following text. These are broad overlap counts, not the manually reviewed diagnostic spans described above.</p><div class="table-wrap"><table><thead><tr><th scope="col">Fixture</th><th scope="col">Original</th><th scope="col">Empty</th><th scope="col">Newline</th><th scope="col">Changed</th></tr></thead><tbody><tr><th scope="row">Lua expression</th><td>0</td><td>0</td><td>0</td><td>0</td></tr><tr><th scope="row">Lua newline</th><td>7</td><td>0</td><td>0</td><td>9</td></tr><tr><th scope="row">Lua operator</th><td>0</td><td>9</td><td>9</td><td>0</td></tr><tr><th scope="row">TeX delimiter</th><td>0</td><td>0</td><td>0</td><td>0</td></tr><tr><th scope="row">TeX expression</th><td>2</td><td>9</td><td>9</td><td>0</td></tr><tr><th scope="row">TeX newline</th><td>8</td><td>3</td><td>1</td><td>9</td></tr><tr><th scope="row">TeX operator</th><td>9</td><td>9</td><td>9</td><td>0</td></tr><tr><th scope="row">TeX right-hand side</th><td>5</td><td>2</td><td>2</td><td>1</td></tr></tbody></table></div><p class="small" style="margin-top:16px">The diagnostic equation ending in the TeX expression example is shorter than the broad threshold, so its manual count need not match this table. See the report for all manual reviews and exact inputs.</p></div></details></section>
+  <section><div class="eyebrow" style="color:#18756e">04 / Practical takeaway</div><h2>Inspect the edit before changing the rule</h2><p class="lead">The test does not support a blanket claim that supplying a suffix increases repetition. It does show that the suffix can influence a completion, and that some completions reach text already present after the cursor.</p><div class="limits"><h3>Keep the scope in mind</h3><ul><li>The eight examples were selected, not randomly sampled from everyday editing. Nine repeats of one position are not nine independent editing situations.</li><li>Many responses hit the <strong>64-token cap</strong>, which can truncate output. A token is a unit of text used by the model, not necessarily a whole word.</li><li>The overlap measure does not check whether the resulting document is valid. Automatically stripping matching text could remove valid syntax or a useful short insertion.</li><li>The model was called as <code>codestral-latest</code>, an alias that can change. Different stop settings or an editor that accepts only the first line could produce a different visible result.</li></ul></div><p class="small" style="margin-top:20px">Estimated cost: $0.0168345, calculated from reported usage and the published rates used in the run. It is not an invoice and excludes account-specific charges.</p></section>
+  <section><h2>Follow the evidence</h2><p>Open the report for the full analysis, or inspect the saved inputs and measurements directly.</p><div class="sources"><a href="../reports/codestral_suffix_controls_288calls_64tokens_2026-10-27_20-41-06/REPORT.md">Full report</a><a href="../reports/codestral_suffix_controls_288calls_64tokens_2026-10-27_20-41-06/fixtures.json">Exact fixtures</a><a href="../reports/codestral_suffix_controls_288calls_64tokens_2026-10-27_20-41-06/summary.json">Summary data</a><a href="../reports/codestral_suffix_controls_288calls_64tokens_2026-10-27_20-41-06/response_metrics.csv">Per-call metrics</a><a href="../reports/codestral_suffix_controls_288calls_64tokens_2026-10-27_20-41-06/ledger.jsonl">Request ledger</a></div></section>
+</main><footer class="wrap">Based on the saved 288-call benchmark. No production completion behavior was changed by the experiment.</footer>
+</body></html>
